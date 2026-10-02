@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Oracle-label every mock unit and print coverage before vs after retrain.
 
-Agent note: uses ``true_unsafe`` which exists only on mock fixtures.
-Never read that field in the scorer or the live UI.
+Uses ``true_unsafe``, which exists only on mock fixtures; the scorer and
+the live UI never read it.
 """
 
 from __future__ import annotations

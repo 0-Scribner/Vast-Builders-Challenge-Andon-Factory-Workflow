@@ -1,9 +1,6 @@
 """Prior-anchored logistic regression + Beta-smoothed gate thresholds.
 
-Agent note
-----------
-This is the whole "learning" story. Keep it numpy-only (ConfigMap / slim
-image). Do not introduce sklearn.
+numpy only, so the module fits a ConfigMap on the slim image.
 
 Cold start: ``w = w0`` so ``p_fail = sigmoid(prior_logit) = p_fail_prior``.
 After labels: minimize log-loss + (λ/2)||w - w0||². Overrides of the

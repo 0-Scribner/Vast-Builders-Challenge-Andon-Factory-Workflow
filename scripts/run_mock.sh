@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local mock server. Agent: prefer the run-mock skill.
+# Local server; SCRIBNER_MOCK=0 switches it to live VSS.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PYTHON="$ROOT/.venv/bin/python"

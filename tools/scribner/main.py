@@ -1,9 +1,7 @@
 """Scribner FastAPI app, warehouse near-miss / path-clear gate.
 
-Agent note
-----------
-Routes are the contract with ``static/index.html``. Rename a path only
-together with the UI fetch() calls.
+Routes are the contract with ``static/index.html``, which calls them by
+path relative to the served page.
 
 This file is the K8s entrypoint: ConfigMap mounts this directory at
 ``/code`` and runs ``python main.py``. Imports are **sibling** modules
@@ -44,7 +42,6 @@ from kits import (
     LINE,
     LOCATION,
     PAYOFF_QUERY,
-    PLAN_B_BRANCH,
     PRODUCT,
     REASON_CODES,
     STACK_LINE,
@@ -114,7 +111,6 @@ def health() -> Dict[str, Any]:
         "camera_id": CAMERA_ID,
         "payoff_query": PAYOFF_QUERY,
         "stack_line": STACK_LINE,
-        "plan_b_branch": PLAN_B_BRANCH,
         "kits": kit_ids(),
         "store": state.store.state_summary(),
         "andon": _andon(),

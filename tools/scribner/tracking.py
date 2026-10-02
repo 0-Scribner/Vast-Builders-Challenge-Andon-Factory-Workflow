@@ -1,6 +1,6 @@
 """Best-effort W&B logging. No-ops when wandb is not installed or unkeyed.
 
-Agent note: a failed wandb import must never break retrain. The UI reads
+A failed wandb import or run never breaks retrain; the UI reads
 ``metrics_log.json`` either way.
 """
 

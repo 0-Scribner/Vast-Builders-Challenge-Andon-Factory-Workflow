@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sanitized connection and app checks for Josh's handoff; no ingest or review writes.
+"""Sanitized connection and app checks; no ingest or review writes.
 
 Exit 0: requested checks passed; 1: at least one failed; 2: missing prerequisites.
 Connection success is NOT proof of re-ingest, SDK logging, or browser playback.
@@ -173,7 +173,7 @@ def vss_checks(results, env):
 
 
 def gpu_health(base, model, token):
-    # The user's laptop handoff explicitly makes the bearer optional.
+    # GPU_BEARER_TOKEN is optional; Authorization is sent only when it is set.
     headers = {"Authorization": "Bearer " + token} if token else {}
     if model == "yolo":
         data = json_request("GET", base + "/healthz", headers=headers)

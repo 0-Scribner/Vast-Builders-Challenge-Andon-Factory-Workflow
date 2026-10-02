@@ -4,11 +4,9 @@ Scribner is the **Primary** judged product: a Japanese-QC **安灯 andon board**
 
 **Pitch:** Scribner puts an andon over official warehouse video. Green means the aisle is clear. Yellow calls a human. Red is a near-miss, a person close to a moving vehicle, and the line does not run until someone looks.
 
-Plan B (LEGO completeness) lives on `cursor/plan-b-lego-completeness-72e3`. Agents: read **[AGENTS.md](AGENTS.md)** first, then `.cursor/skills/`. Lines: [docs/PLAN.md](docs/PLAN.md).
-
 ## Why this, on this stack
 
-The challenge thesis is *the ingest prompt decides what is searchable*. Scribner makes that prompt a **path-safety schema** (`PERSON` / `VEHICLE` / `MOTION` / `DISTANCE` / `PATH_CLEAR` / `NEAR_MISS`) for footage organizers already indexed. Re-ingest Pack C; do not film LEGO for the judged demo; do not scrape YouTube; do not build a hard-hat detector. YOLO person/vehicle **corroborates** and must **not** sole-source AUTO_CLEAR. Learning is a prior-anchored logistic regression, not a new detector.
+The challenge thesis is *the ingest prompt decides what is searchable*. Scribner makes that prompt a **path-safety schema** (`PERSON` / `VEHICLE` / `MOTION` / `DISTANCE` / `PATH_CLEAR` / `NEAR_MISS`) for footage organizers already indexed. Scribner re-ingests the provided Pack C footage, ingests no internet video, and is not a hard-hat detector. YOLO person/vehicle **corroborates** and must **not** sole-source AUTO_CLEAR. Learning is a prior-anchored logistic regression, not a new detector.
 
 The same schema **is** the official Architecture Reference payoff query *person close to a moving vehicle* (`SCRIBNER_PACK=cross`).
 
@@ -39,27 +37,22 @@ PYTHONPATH=tools/scribner python3 scripts/simulate_reviews.py
 
 ## Live (workshop VM)
 
-1. Re-ingest Pack C with the warehouse-aisle prompt (skill `ingest-kits` / `ingest-warehouse`). Camera `sdg_warehouse_cam-2`.
-2. Deploy at `/app` (skill `deploy-scribner`, [deploy/DEPLOY.md](deploy/DEPLOY.md)).
+1. Re-ingest Pack C with the warehouse-aisle prompt (`workshop/03_reingest_one_pack_c.py`, then `workshop/04_reingest_remaining_pack_c.py`). Camera `sdg_warehouse_cam-2`.
+2. Deploy at `/app` (`workshop/07_deploy_scribner.sh`, [deploy/DEPLOY.md](deploy/DEPLOY.md)).
 3. Review HOLD units (`CLEAR` / `UNSAFE`), hit Retrain, show coverage.
 
 Scripted workshop steps with pass checks: [workshop/README.md](workshop/README.md).
-
-Do not rebuild DataEngine. Do not Docker. Do not demo localhost.
 
 ## Layout
 
 | Path | Role |
 |------|------|
-| `AGENTS.md` | Operating manual for coding agents |
-| [docs/PLAN.md](docs/PLAN.md) | Primary vs Plan B |
 | [docs/BUILDERS_STACK.md](docs/BUILDERS_STACK.md) | Official challenge repo contract |
 | [docs/DEMO.md](docs/DEMO.md) | Two-minute judge demo script |
 | `tools/scribner/` | App (flat imports; this dir is the ConfigMap) |
 | `tools/scribner/kits.py` | Scene schema (source of truth) |
 | `prompts/warehouse_near_miss_v1.txt` | Generated ingest prompts (800 chars max) |
 | `workshop/` | Numbered workshop VM steps |
-| `.cursor/skills/` | run-mock, ingest-kits, ingest-warehouse, review-retrain, deploy-scribner |
 | `deploy/DEPLOY.md` | kubectl for `/app` |
 
 ## Stack named in the demo
@@ -79,7 +72,7 @@ Each tool named in the official [BUILD_DAY.md](https://github.com/vast-data/vast
 | Cosmos Embed | Indexes the segments that the live scan searches; `workshop/06` checks health and a 256-value embedding. |
 | YOLO | Person and vehicle detections corroborate the caption and never sole-source AUTO_CLEAR; `workshop/06` runs inference on a Pack C clip. |
 | W&B Serverless Inference | Optional prior in `tools/scribner/llm.py`, clamped on near-miss; retrain runs log through `tools/scribner/tracking.py`; `workshop/06` checks both. |
-| Cursor | Coding agent on the VM; Scribner adds its own skills in `.cursor/skills/`. |
+| Cursor | Coding agent on the workshop VM, driven by the official skills in `~/vast-builders-challenge/.cursor/skills`. |
 | Video Search & Summary UI | Not called by the app; `workshop/02` reads the same Explore inventory through the API. |
 | `reingest-chunk` | `workshop/03`: one complete Pack C chunk first, then a caption-field check. |
 | `reingest-videos` | `workshop/04`: the remaining Pack C clips, one job at a time. |

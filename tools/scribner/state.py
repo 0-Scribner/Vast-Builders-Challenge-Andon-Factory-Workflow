@@ -1,7 +1,7 @@
 """Orchestrate scan to score to review to retrain.
 
-Agent note: ``AppState`` is the object ``main.py`` talks to. Keep HTTP
-handlers thin; put loop logic here so tests can drive it without Starlette.
+``AppState`` is the object ``main.py`` talks to. The review loop lives here
+so tests can drive it without Starlette.
 """
 
 from __future__ import annotations

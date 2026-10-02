@@ -151,7 +151,7 @@ def _unit_from_parent(
 def _occlusion(kit_id: str, classes: str) -> bool:
     """Person/forklift/hand are Pack C subjects, not a blocked view.
 
-    AGENTS.md: do not HOLD every person as occlusion. A YOLO ``hand`` class
+    People are expected in Pack C, so a person never counts as occlusion. A YOLO ``hand`` class
     was a LEGO leftover; it must not trip view_blocked on warehouse clips.
     View-blocked comes from the caption (UNCLEAR / LOW) or unit flags.
     """

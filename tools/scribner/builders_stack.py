@@ -9,9 +9,8 @@ pattern documented there. Re-extract with::
     BUILDERS_CHALLENGE_DIR=/path/to/vast-builders-challenge \\
       python3 scripts/extract_builders_stack.py
 
-Agent note: never hardcode GPU hosts from skill examples. Never wire
-Canary-1B into the aisle gate (warehouse clips have no speech; Canary
-is optional ASR).
+GPU hosts come only from env vars, never from skill examples. Canary-1B
+(ASR) is not wired: warehouse clips have no speech.
 """
 
 from __future__ import annotations
@@ -284,7 +283,7 @@ def _forbidden_from_retrieval(text: str) -> List[str]:
 def scribner_root() -> Path:
     here = Path(__file__).resolve().parent
     for p in [here, *here.parents]:
-        if (p / "AGENTS.md").is_file():
+        if (p / "prompts").is_dir():
             return p
     return here.parents[1]
 

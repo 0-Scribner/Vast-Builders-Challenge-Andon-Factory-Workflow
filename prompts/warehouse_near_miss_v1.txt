@@ -3,7 +3,6 @@
 # Primary line=primary product=warehouse-near-miss
 # Pack C camera_id=sdg_warehouse_cam-2 location=warehouse3 capture_type=warehouse
 # Cross-pack search: person close to a moving vehicle
-# Plan B branch: cursor/plan-b-lego-completeness-72e3
 
 ## scene_id=warehouse-aisle  chars=723
 This clip is official Pack C warehouse footage (sdg_warehouse_cam-2, warehouse3). Judge path safety: a person close to a moving vehicle is a near-miss; a pallet or body in a travel lane is a blocked path. Write one paragraph in this exact order: PERSON: YES, NO, or UNCLEAR; VEHICLE: forklift, truck, pallet-jack, other, or NONE; MOTION: MOVING, STOPPED, or NONE; DISTANCE: CLOSE, FAR, or NONE; PATH_CLEAR: YES or NO; NEAR_MISS: YES or NO; HAZARD: forklift-near-person, pallet-in-walkway, person-in-aisle, blocked-path, or NONE; UNCLEAR: what you cannot verify or NONE; CONFIDENCE: HIGH, MEDIUM, or LOW; then one sentence on the closest person-vehicle pair. Count only what is clearly visible; never assume a path is clear.

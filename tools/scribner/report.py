@@ -1,7 +1,7 @@
 """Shift report from labeled + gated units.
 
-Agent note: only CLEAR/UNSAFE labels plus AUTO_CLEAR / AUTO_ALERT
-decisions go into the narrative. HOLD units are a backlog, not a verdict.
+Only CLEAR/UNSAFE labels plus AUTO_CLEAR / AUTO_ALERT decisions go into
+the narrative. HOLD units are a backlog, not a verdict.
 """
 
 from __future__ import annotations

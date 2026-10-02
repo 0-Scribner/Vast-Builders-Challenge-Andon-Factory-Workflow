@@ -1,6 +1,5 @@
 # Deploy Scribner on the workshop cluster
 
-Agent note: this is the human-readable twin of `.cursor/skills/deploy-scribner`.
 The VM has **no Docker daemon**. Code is a ConfigMap. Image is public
 `python:3.12-slim`. Ingress path is **`/app`** on the team's existing host.
 

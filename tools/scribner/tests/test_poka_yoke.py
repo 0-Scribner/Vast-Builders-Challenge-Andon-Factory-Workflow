@@ -37,7 +37,6 @@ class ApiPokaYokeTests(unittest.TestCase):
         self.assertEqual(body["line"], "primary")
         self.assertEqual(body["payoff_query"], PAYOFF_QUERY)
         self.assertEqual(body["stack_line"], STACK_LINE)
-        self.assertEqual(body["plan_b_branch"], "cursor/plan-b-lego-completeness-72e3")
         self.assertEqual(body["corpus"], "provided")
         self.assertEqual(body["andon"]["board"], "andon")
         self.assertEqual(body["andon"]["name_ja"], "安灯")

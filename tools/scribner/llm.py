@@ -1,8 +1,8 @@
 """Optional W&B Inference prior. Falls back to inspection.heuristic_prior.
 
-Agent note: never fail the gate because W&B is missing. Credits and
-network are flaky on a hackathon day. Cache by caption hash so a retrain
-does not re-spend tokens.
+A missing or failing W&B call falls back to the heuristic prior and never
+fails the gate. Results are cached by caption hash so a retrain does not
+re-spend tokens.
 """
 
 from __future__ import annotations

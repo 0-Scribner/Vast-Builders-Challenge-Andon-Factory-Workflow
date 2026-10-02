@@ -4,9 +4,6 @@ The judged demo is official Pack C (sdg_warehouse_cam-2). The same
 prompt-as-schema is the Architecture Reference payoff query
 *person close to a moving vehicle*.
 
-Plan B (LEGO completeness) lives on branch
-``cursor/plan-b-lego-completeness-72e3``, do not mix those BOMs here.
-
 Regenerate prompts::
 
     PYTHONPATH=tools/scribner python3 -c "from kits import write_prompt_file; write_prompt_file()"
@@ -21,7 +18,6 @@ CUSTOM_PROMPT_MAX = 800
 
 LINE = "primary"
 PRODUCT = "warehouse-near-miss"
-PLAN_B_BRANCH = "cursor/plan-b-lego-completeness-72e3"
 PAYOFF_QUERY = "person close to a moving vehicle"
 STACK_LINE = "VAST · NVIDIA Cosmos · CoreWeave / W&B · Cursor"
 
@@ -174,7 +170,7 @@ def write_prompt_file(path: Optional[Path] = None) -> Path:
     here = Path(__file__).resolve().parent
     root = here
     for p in [here, *here.parents]:
-        if (p / "AGENTS.md").exists() or (p / "prompts").is_dir():
+        if (p / "prompts").is_dir():
             root = p
             break
     out = path or (root / "prompts" / "warehouse_near_miss_v1.txt")
@@ -185,7 +181,6 @@ def write_prompt_file(path: Optional[Path] = None) -> Path:
         f"# Primary line={LINE} product={PRODUCT}",
         f"# Pack C camera_id={PACK_C_CAMERA} location={PACK_C_LOCATION} capture_type={PACK_C_CAPTURE}",
         f"# Cross-pack search: {CROSS_PACK_QUERY}",
-        f"# Plan B branch: {PLAN_B_BRANCH}",
         "",
     ]
     for sid in scene_ids():

@@ -1,9 +1,7 @@
-"""Attack the handoff's readiness checks without contacting live services."""
+"""Readiness checks fail closed without contacting live services."""
 import importlib.util
 import json
 from pathlib import Path
-import re
-import subprocess
 import sys
 from types import SimpleNamespace
 import unittest
@@ -16,20 +14,6 @@ spec.loader.exec_module(checks)
 
 
 class HandoffChecksTest(unittest.TestCase):
-    def test_handoff_shell_python_and_section_contracts(self):
-        doc = (ROOT / ".cursor/handoffs/josh-cowork.md").read_text(encoding="utf-8")
-        self.assertEqual(re.findall(r"^## (.+)$", doc, re.M), [
-            "Receiver", "Done when", "Context", "Never", "Inputs", "Procedure",
-            "Verification", "Report back", "Stop and escalate"])
-        context = doc.split("## Context\n", 1)[1].split("## Never", 1)[0]
-        self.assertLessEqual(len([s for s in context.splitlines() if s.strip()]), 8)
-        for block in re.findall(r"```bash\n(.*?)\n```", doc, re.S):
-            # Bytes keep LF line endings; text mode writes CRLF on Windows.
-            result = subprocess.run(["bash", "-n"], input=block.encode("utf-8"), capture_output=True)
-            self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8", "replace"))
-            for python in re.findall(r"python - <<'PY'\n(.*?)\nPY", block, re.S):
-                compile(python, "handoff snippet", "exec")
-
     def test_http_redirect_and_auth_errors_fail(self):
         for status in (301, 302, 401, 403, 500):
             with self.subTest(status=status), patch.object(checks.requests, "request",

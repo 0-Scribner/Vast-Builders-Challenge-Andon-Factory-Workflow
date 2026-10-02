@@ -82,10 +82,10 @@ STATIC_DIR = PKG_DIR / "static"
 
 
 def repo_root() -> Path:
-    """Walk up until AGENTS.md or prompts/ appears (nested repo vs flat ConfigMap)."""
+    """Walk up until prompts/ appears (nested repo vs flat ConfigMap)."""
     here = Path(__file__).resolve().parent
     for p in [here, *here.parents]:
-        if (p / "AGENTS.md").exists() or (p / "prompts").is_dir():
+        if (p / "prompts").is_dir():
             return p
     return here
 
