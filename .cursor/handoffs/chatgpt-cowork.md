@@ -1,39 +1,44 @@
-# Handoff: close Scribner engineering for ChatGPT Cowork
+# Handoff: close Scribner engineering for ChatGPT Cowork (Josh’s machine)
 
-You are a coding agent (ChatGPT Cowork). Execute this handoff to completion with no back-and-forth. Do not ask Josh to write code, design UX, or choose libraries. After you finish, the only human job left is: **film LEGO kits and drop the clips in a folder**. An **operator** (not an engineer) then uses a web UI to say whether the QC gate was right.
+You are ChatGPT Cowork **on Josh’s personal computer**, not the VAST workshop VM and not a Cursor cloud agent. Execute this handoff to completion with no back-and-forth. Do not ask Josh to write code, design UX, or choose libraries. After you finish, the only human job left is: **film LEGO kits on this machine and drop the clips in a folder**. An **operator** (Josh or a teammate) then uses a web UI on this machine to say whether the QC gate was right.
 
 **Poka-yoke** (mistake-proofing) and **adversarial review** are mandatory on every change. A change without both is not done. Prefer making the wrong action *impossible* over adding a warning.
 
-Copy this entire file into Cowork. Repo on disk is Scribner. Current engineering branch: `cursor/lego-kit-qc-gate-72e3`. Origin (Cursor): `https://origin.cursor.com/git/bryce-mcg/Scribner.git`. Public GitHub must exist and stay in sync with origin on every push.
+Repo name: **Scribner**. Engineering branch: `cursor/lego-kit-qc-gate-72e3`.
+- Origin (Cursor forge, may be unreachable from this laptop): `https://origin.cursor.com/git/bryce-mcg/Scribner.git`
+- GitHub (you must create or use this from **this machine**): `https://github.com/<owner>/Scribner.git` (`GITHUB_REPO` env wins if set)
+
+If this folder is not already a git clone of Scribner with `AGENTS.md` at the root, clone or copy it first. If Origin auth fails from the laptop, get the tree however Josh already has it (Cursor app folder, zip, existing clone) and make **GitHub** the remote you can push. Still add `origin` if it works. **Every commit: push every remote that exists. GitHub is required before you are done.**
 
 ## Receiver
 
-ChatGPT Cowork on Josh’s machine (or any machine with git, Python 3.12, ffmpeg). CWD = Scribner repo root (`AGENTS.md` present). You may clone if missing. You will edit code, run tests, run an adversarial pass on each change, commit, push **origin and GitHub**, and leave mock UI + ingest path ready. Workshop VM / K8s deploy is documented, not required for this handoff to complete.
+ChatGPT Cowork, Josh’s laptop, CWD = Scribner repo root (`AGENTS.md` present). Python 3.12, pip, ffmpeg, git, `gh` if possible. You will edit code, run tests **locally**, run adversarial attacks locally, commit, push GitHub (and Origin if authenticated), and leave **mock UI** ready on localhost. There is **no** `/config/*.config` on this machine — do not search for it, do not block on it. Workshop VM ingest/deploy is **later**, not this session.
 
 ## Done when
 
 - [ ] `PYTHONPATH=tools/scribner python3 -m unittest discover -s tools/scribner/tests -v` is all OK, including **poka-yoke and adversarial** tests (false-PASS attacks, inconsistent captions, illegal operator actions, filename/prompt guards).
-- [ ] `SCRIBNER_MOCK=1 ./scripts/run_mock.sh` serves an **Operator** UI at `http://127.0.0.1:8080`: video + gate decision + BOM fields; operator keys **A** = gate was right, **O** = gate was wrong (then COMPLETE/INCOMPLETE + reason). HOLD items require a verdict. No engineer copy on that screen. Illegal clicks are **rejected by API and disabled in UI** (poka-yoke), not toasted-and-allowed.
-- [ ] Live scan path uses the full allowed stack (or degrades in logs, never crashes): VSS upload/explore/metadata/detections/search, Cosmos Reason captions (BOM prompt), YOLO detections as occlusion, Cosmos Embed1 vectors as features/precedents, W&B Inference prior when `WANDB_API_KEY` is set, W&B run on retrain. Do not call Canary (kits are silent). Do not rebuild DataEngine. Do not Docker.
-- [ ] Dual remotes: `origin` = Origin, `github` = `https://github.com/<owner>/Scribner.git` (public). Every commit is pushed to **both**. `scripts/push_both.sh` exists and is used. Push script **fails closed** if either remote fails.
-- [ ] README / AGENTS.md state: remaining human work is film (`docs/FILM_THE_KITS.md`) → drop files in `~/kit-clips` named `kit-<kit_id>_unit-<nnn>.mp4` → VM agent runs `.cursor/handoffs/ingest-kits.md`. Operator only opens `/app` (or mock localhost) to approve the gate.
-- [ ] Every feature you shipped has a checked **Adversarial review** block in `.cursor/adversarial/YYYYMMDD-cowork.md` (attacks you ran, what broke, the poka-yoke you added). No empty checklists.
-- Out of scope: filming, YouTube, changing BOM unless a new kit appears in filenames, attending the hackathon, `docker`, DataEngine function edits, native apps.
+- [ ] `SCRIBNER_MOCK=1 ./scripts/run_mock.sh` serves an **Operator** UI at `http://127.0.0.1:8080` on **this laptop**: video + gate decision + BOM fields; keys **A** = gate was right, **O** = gate was wrong (then COMPLETE/INCOMPLETE + reason). HOLD items require a verdict. No engineer copy on that screen. Illegal clicks are **rejected by API and disabled in UI** (poka-yoke), not toasted-and-allowed.
+- [ ] Live-mode **code** is wired for the full allowed stack and **degrades on this laptop** (no VSS): VSS client, Cosmos Reason BOM prompt, YOLO detections as occlusion, Cosmos Embed1 kNN, W&B prior/tracking when keys exist. Do not call Canary. Do not rebuild DataEngine. Do not Docker. Do not require the workshop cluster to finish this handoff.
+- [ ] Remote `github` exists and `git ls-remote github HEAD` matches local HEAD. If `origin` works, it matches too. `scripts/push_both.sh` pushes all configured remotes and **fails closed** if any configured remote fails. Prefer: origin then github. If origin is missing, push github only but say so in Report back.
+- [ ] README / AGENTS.md: remaining human work on **this machine** is film (`docs/FILM_THE_KITS.md`) → `~/kit-clips` named `kit-<kit_id>_unit-<nnn>.mp4`. Later, on the **workshop VM**, an ingest agent runs `.cursor/handoffs/ingest-kits.md`. Operator on laptop (now) or `/app` (event) only approves the gate.
+- [ ] `.cursor/adversarial/YYYYMMDD-cowork.md` has Attack / Expected / Result / Fix with Result: pass on the required attacks. No empty checklists.
+- Out of scope this session: filming, YouTube, workshop login, kubectl, attending the hackathon, `docker`, DataEngine edits, native apps, changing BOM unless a new kit appears in filenames.
 
 ## Context
 
-Scribner is a LEGO kit completeness QC gate on the VAST Builders Challenge stack. `tools/scribner/kits.py` is the BOM. Cosmos captions must stay labeled prose (`PRESENT:` …) because VSS strips JSON; custom_prompt ≤800 chars. Learning is numpy logistic regression in `learn.py` anchored to `prior_logit` (`w0[1]=1`). App is flat imports under `tools/scribner/` for ConfigMap deploy at Ingress **`/app`**. Current UI labels COMPLETE/INCOMPLETE directly; you must change it so the **operator judges the gate**. YOLO has no LEGO classes. Own footage only. False PASS (incomplete kit auto-passed) is the failure mode poka-yoke must make hardest.
+Scribner is a LEGO kit completeness QC gate for the VAST Builders Challenge. `tools/scribner/kits.py` is the BOM. Cosmos captions must stay labeled prose (`PRESENT:` …) because VSS strips JSON; custom_prompt ≤800 chars. Learning is numpy logistic regression in `learn.py` anchored to `prior_logit` (`w0[1]=1`). App is flat imports under `tools/scribner/` for later ConfigMap deploy at Ingress **`/app`**. Change the UI so the **operator judges the gate**, not “is this a car.” YOLO has no LEGO classes. Own footage only. False PASS (incomplete kit auto-passed) is the failure poka-yoke must make hardest. This laptop runs **mock** until clips are uploaded on the VM.
 
 ## Never
 
 - Do not ingest internet/YouTube video (reject by URL/host check if a path is a URL).
-- Do not print `/config`, JWTs, passwords, `WANDB_API_KEY`, or GitHub tokens.
-- Do not `git add` mp4/zip/clips (pre-commit / `push_both` must refuse).
+- Do not print `/config`, JWTs, passwords, `WANDB_API_KEY`, or GitHub tokens. Never run bare `env`.
+- Do not `git add` mp4/zip/clips (`push_both` must refuse).
 - Do not add sklearn/scipy/torch/node_modules; ConfigMap ≲ 1 MiB.
-- Do not ship localhost as the judged **event** demo (mock localhost is OK for this closeout). Event deliverable remains K8s `/app`.
-- Do not push only to origin. If GitHub push fails, status=`blocked`, do not pretend it is on github.com.
+- Do not treat localhost as the **event** deliverable. Event app is K8s `/app`. Localhost is correct for **this laptop closeout**.
+- Do not block waiting for workshop `/config` or a VM. Mock is enough.
+- Do not skip GitHub because Origin already has the code. Josh’s machine must have a github.com URL.
 - Do not ask Josh which button labels to use. Use the Operator spec below.
-- Do not rebuild VSS / DataEngine.
+- Do not rebuild VSS / DataEngine. Do not docker.
 - Do not AUTO_PASS when caption is inconsistent, confidence is LOW, UNCLEAR is nonempty, or occlusion is true.
 - Do not accept operator “Gate was right” on HOLD, or “Gate was wrong” with empty/agree reason.
 - Do not skip adversarial review because “the happy path works.”
@@ -42,85 +47,108 @@ Scribner is a LEGO kit completeness QC gate on the VAST Builders Challenge stack
 
 | Name | Where | Required |
 |------|--------|----------|
-| Repo | this tree or clone Origin branch `cursor/lego-kit-qc-gate-72e3` | yes |
-| Origin remote | `origin` → Origin Scribner | yes |
-| GitHub remote | `github` URL; create public `Scribner` under Josh’s GitHub user/org if missing (`gh repo create` or API). If `GITHUB_REPO` env is set, use that. | yes |
-| Auth | `gh auth status` or `git` HTTPS/SSH to github.com | yes to finish GitHub |
+| Repo on this laptop | folder with `AGENTS.md`; clone Origin branch `cursor/lego-kit-qc-gate-72e3` if you can, else use Josh’s existing folder | yes |
+| GitHub | `gh auth status` or git credentials to github.com; create public repo if 404 | yes |
+| Origin | only if this laptop can authenticate to origin.cursor.com | no |
 | Python | 3.12 + pip: fastapi uvicorn requests numpy pydantic openai | yes |
-| Footage | not required for this handoff | no |
+| ffmpeg | for mock `/clip` | yes (install if missing) |
+| Footage | not required for this session | no |
+| Workshop `/config` | does not exist here | n/a |
 
 ## Procedure
 
-1. **Checkout and remotes.**
+1. **Orient on this laptop.**
 
 ```sh
-git fetch origin cursor/lego-kit-qc-gate-72e3
-git checkout cursor/lego-kit-qc-gate-72e3
-git pull origin cursor/lego-kit-qc-gate-72e3
+pwd
+test -f AGENTS.md
+git status -sb
 git remote -v
+git branch --show-current
+python3 --version
+which ffmpeg || echo "INSTALL ffmpeg"
+gh auth status || true
 ```
 
-If `github` remote is missing: resolve owner from `gh api user --jq .login` or `GITHUB_REPO`. Create public repo if 404. `git remote add github https://github.com/<owner>/Scribner.git`. Push branch and `main`.
+If not on `cursor/lego-kit-qc-gate-72e3` and the branch exists: checkout and pull. If the folder is empty: clone Origin if auth works; otherwise stop with `blocked: no Scribner tree on this machine` (Josh must open the Cursor/Origin project or paste the folder). Do **not** invent a blank app.
 
-2. **Add `scripts/push_both.sh`** (executable). It must: refuse if staged/working tree contains `*.mp4`, `*.zip`, or files named `*.config` except `*.example`; `git push origin HEAD` then `git push github HEAD` (create `-u` as needed). **Exit non-zero** if either push fails. Use this after every commit in this handoff.
+2. **GitHub remote (required on this machine).**
 
-3. **Operator UI (required product change).** Edit `tools/scribner/static/index.html` + `state.py` / `main.py` as needed.
+```sh
+gh api user --jq .login
+```
 
-- Screen title: **Operator — kit QC gate**. Subtitle: approve or override the gate. No “reviewer”, no “engineer”.
-- Unit card: autoplay clip (`/clip`), kit name, BOM missing/present/unclear, caption, `p_fail`, chip for `AUTO_PASS` / `AUTO_FAIL` / `HOLD`, occlusion flag, prior rationale, **inconsistency flag** if COMPLETE=YES but missing nonempty (or COMPLETE=NO but missing empty and unclear empty).
+`GITHUB_REPO` if set, else `https://github.com/<login>/Scribner.git`. Create public repo if 404 (`gh repo create Scribner --public --source=. --remote=github` or `git remote add github …` then `gh repo create`). Push this branch and `main` to `github`.
+
+If Origin works: keep `origin` pointing at origin.cursor.com. Do not delete it.
+
+3. **Add `scripts/push_both.sh`** (executable). Behavior on **this laptop**:
+
+- Refuse if staged/working tree contains `*.mp4`, `*.zip`, or `*.config` except `*.example`.
+- Push `HEAD` to every remote in `origin` and `github` that exists.
+- If both exist: origin first, then github.
+- If only github exists: push github, print `origin skipped`.
+- **Exit non-zero** if any attempted push fails.
+
+Use it after every commit.
+
+4. **Operator UI on localhost (required).** Edit `tools/scribner/static/index.html` + `state.py` / `main.py` as needed.
+
+- Title: **Operator — kit QC gate**. Subtitle: approve or override the gate. No “reviewer”, no “engineer”.
+- Unit card: autoplay `/clip`, kit name, BOM missing/present/unclear, caption, `p_fail`, chip AUTO_PASS / AUTO_FAIL / HOLD, occlusion, prior rationale, **inconsistent** if COMPLETE=YES and missing nonempty (or COMPLETE=NO and missing empty and unclear empty).
 - Precedents: up to 3 nearest labeled units (Embed1 cosine if vectors exist; else caption-tag overlap).
-- Actions (UI disabled + API 400 if violated — poka-yoke):
-  - **A / “Gate was right”**: AUTO_PASS → COMPLETE; AUTO_FAIL → INCOMPLETE; **HOLD: button disabled, API rejects**.
-  - **O / “Gate was wrong”**: operator must pick COMPLETE or INCOMPLETE **and** a reason chip that is **not** `agree`. Empty reason → reject.
-  - HOLD: operator must choose COMPLETE or INCOMPLETE (not agree).
-  - Override of AUTO_PASS (claiming the kit is INCOMPLETE) is 1-click. Override of AUTO_FAIL that would mark COMPLETE (possible escaped defect) requires a **second confirm** in UI (`confirm_escape=true` on API). Missing confirm → 400.
-- Metrics: coverage, HOLD rate, operator agreement (share of non-HOLD labels with `overrode=false`), HOLD band, n_labels, **false-pass risk** (count of AUTO_PASS with LOW/UNCLEAR/inconsistent — must stay 0).
-- Keep audit autos in the queue so the operator can contradict AUTO_*.
+- Actions (UI disabled + API 400 — poka-yoke):
+  - **A / “Gate was right”**: AUTO_PASS → COMPLETE; AUTO_FAIL → INCOMPLETE; **HOLD: disabled, API rejects**.
+  - **O / “Gate was wrong”**: COMPLETE or INCOMPLETE **and** reason chip **not** `agree`. Empty reason → reject.
+  - HOLD: operator must choose COMPLETE or INCOMPLETE.
+  - Override AUTO_PASS → INCOMPLETE: 1-click. Override AUTO_FAIL → COMPLETE: second confirm (`confirm_escape=true`). Missing confirm → 400.
+- Metrics: coverage, HOLD rate, operator agreement, HOLD band, n_labels, **false-pass risk** (AUTO_PASS with LOW/UNCLEAR/inconsistent must stay 0).
+- Audit autos stay in the queue.
 
-`POST /api/review` body may add `gate_ok`, `confirm_escape`. Persist `overrode`. Do not break existing tests; extend them.
+`POST /api/review` may add `gate_ok`, `confirm_escape`. Persist `overrode`. Extend tests; do not drop existing ones.
 
-4. **Poka-yoke in the gate and ingest (required).** Implement so mistakes bounce, they do not warn-and-continue.
+5. **Poka-yoke in gate and ingest (required).** Mistakes bounce; they do not warn-and-continue.
 
 | Mistake to make impossible | Implementation |
 |---------------------------|----------------|
-| Incomplete kit AUTO_PASS | `gate.py`: if `complete is False` or `part_ids_missing` nonempty → never AUTO_PASS (p_fail floor or decision override). |
-| Unclear / LOW / occlusion AUTO_PASS | same; force HOLD or fail-closed, never PASS. |
-| COMPLETE=YES and MISSING nonempty | `inspection.py` sets `inconsistent=True`; gate treats as HOLD. |
-| Operator agrees on HOLD | API 400; UI disables A. |
-| Override with no reason | API 400. |
-| Escaping a fail with one misclick | double-confirm on AUTO_FAIL → COMPLETE. |
-| Bad clip names / unknown kit | ingest path and any helper: regex `kit-<kit_id>_unit-<nnn>.(mp4\|mov\|webm\|mkv\|avi)`; unknown `kit_id` skip, do not guess. |
-| Prompt >800 chars | `prompt_for_kit` already raises; upload helper must refuse if `len(custom_prompt)>800`. |
-| YouTube/http(s) as “file” | reject if path/URL contains youtube, youtu.be, or scheme http(s) except the team VSS host. |
-| Secrets / clips committed | `push_both.sh` refuse list above. |
-| Deploy to `/` | keep Ingress `/app` only in `deploy/DEPLOY.md` / skill. |
+| Incomplete kit AUTO_PASS | `gate.py`: `complete is False` or `part_ids_missing` nonempty → never AUTO_PASS |
+| Unclear / LOW / occlusion AUTO_PASS | force HOLD or fail-closed, never PASS |
+| COMPLETE=YES and MISSING nonempty | `inspection.py` `inconsistent=True`; gate HOLD |
+| Operator agrees on HOLD | API 400; UI disables A |
+| Override with no reason | API 400 |
+| Escaping a fail with one misclick | double-confirm AUTO_FAIL → COMPLETE |
+| Bad clip names / unknown kit | regex `kit-<kit_id>_unit-<nnn>.(mp4\|mov\|webm\|mkv\|avi)`; unknown kit_id skip, do not guess |
+| Prompt >800 chars | refuse upload if `len(custom_prompt)>800` |
+| YouTube/http(s) as “file” | reject youtube, youtu.be, or http(s) except a VSS host |
+| Secrets / clips committed | `push_both.sh` refuse |
+| Deploy to `/` | Ingress `/app` only in `deploy/DEPLOY.md` / skill (docs only this session) |
 
-5. **Use the entire allowed stack in live mode** (`SCRIBNER_MOCK=0`). Graceful degrade if an endpoint is down.
+6. **Stack wiring in code** (must run without VSS on this laptop). Graceful degrade.
 
 | Piece | How you must use it |
 |-------|---------------------|
-| VAST S3 + DataEngine + VastDB | Only via VSS APIs: upload (ingest-kits), explore, metadata, detections, stream, optional `POST /api/v1/search` with `tags`/`camera_id=kit-station-1` |
-| Cosmos Reason | BOM `custom_prompt` from `prompt_for_kit`; optional GPU re-ask is extra, not required |
-| YOLO11 | `GET /videos/detections`; `occlusion` if person/hand; show class list on the operator card. Never “YOLO found a missing wheel” |
-| Cosmos Embed1 | `$COSMOS_EMBED1_URL/v1/embeddings` with bearer if present; 256-d; store on unit; kNN precedents + optional feature dims. If unreachable, skip vectors |
-| W&B Inference | existing `llm.py` prior when `WANDB_API_KEY` set |
-| W&B tracking | existing `tracking.py` on retrain |
-| Cursor/Cowork skills | keep `.cursor/skills/*` accurate after UI rename |
+| VAST S3 + DataEngine + VastDB | VSS APIs in `vss_client.py`; live only when `SCRIBNER_MOCK=0` and `VSS_URL` set |
+| Cosmos Reason | BOM `prompt_for_kit`; live captions from metadata |
+| YOLO11 | `GET /videos/detections`; occlusion if person/hand; show classes on operator card. Never brick ID |
+| Cosmos Embed1 | `$COSMOS_EMBED1_URL/v1/embeddings` + bearer if present; 256-d; kNN; skip if unreachable |
+| W&B Inference | `llm.py` when `WANDB_API_KEY` set |
+| W&B tracking | `tracking.py` on retrain |
+| Skills | keep `.cursor/skills/*` accurate after UI rename |
 | Canary-1B | do not wire |
 
-6. **Adversarial review on all development (required, every change).** After each logical change (operator UI, gate poka-yoke, ingest guards, remotes), **before** commit:
+On this laptop, `SCRIBNER_MOCK=1` is the default you demo.
 
-a. Write attacks in `.cursor/adversarial/YYYYMMDD-cowork.md` using this shape:
+7. **Adversarial review on all development (required, every change).** After each logical change, **before** commit, write `.cursor/adversarial/YYYYMMDD-cowork.md`:
 
 ```
 ## Change: <file or feature>
-Attack: <what a rushed operator, bad caption, or hostile filename would do>
+Attack: <rushed operator, bad caption, hostile filename>
 Expected poka-yoke: <rejected / HOLD / fail-closed>
 Result: pass | fail
-Fix: <commit-able change or n/a>
+Fix: <change or n/a>
 ```
 
-Minimum attacks you must actually run (tests or mock API), not just list:
+Run these for real (tests or mock API), not just list them:
 
 - Caption COMPLETE:YES + MISSING: 4 black wheels → must not AUTO_PASS.
 - Caption CONFIDENCE:LOW COMPLETE:YES → must not AUTO_PASS.
@@ -128,22 +156,18 @@ Minimum attacks you must actually run (tests or mock API), not just list:
 - POST review gate_ok=true on a HOLD unit → 400.
 - POST override AUTO_FAIL→COMPLETE without confirm_escape → 400.
 - POST override with reason=agree or empty → 400.
-- Upload/helper with filename `random.mp4` or kit_id `spaceship` → skip/reject.
-- Prompt string of 801 chars → reject.
+- Filename `random.mp4` or kit_id `spaceship` → skip/reject.
+- Prompt 801 chars → reject.
 - Path `https://www.youtube.com/watch?v=…` → reject.
-- `git add` simulation of a `.mp4` into push_both dry-run → refuse.
+- `push_both` dry-run with a `.mp4` staged → refuse.
 
-b. Put those cases in `tools/scribner/tests/test_poka_yoke.py` (and HTTP tests if you add a TestClient). A green happy-path suite without these is **not** done.
+Put cases in `tools/scribner/tests/test_poka_yoke.py`. If an attack succeeds, **fix before any other feature**. Re-run. Log Result: pass.
 
-c. If an attack succeeds (false PASS or illegal label accepted), **fix before any other feature**. Do not push a known bypass.
+8. **Tests.** Keep `test_scribner.py`. Add poka-yoke tests. Operator mapping tested. Oracle coverage ≥ cold coverage. Hidden-side / low-confidence must not all AUTO_PASS at cold start.
 
-d. Second pass: re-run the same attacks after the fix. Log Result: pass.
+9. **Docs.** AGENTS.md + README: **Operator** (this laptop UI) vs **Ingest agent** (workshop VM later). Josh remaining: film per `docs/FILM_THE_KITS.md` into `~/kit-clips`. Dual push. False PASS is the red line. Every change needs an adversarial note.
 
-7. **Tests.** Keep `test_scribner.py`. Add poka-yoke tests. Operator agree/override mapping tested. Mock coverage after oracle labels ≥ cold coverage. Hidden-side / low-confidence must not all AUTO_PASS at cold start.
-
-8. **Docs.** AGENTS.md + README: two roles — **Operator** (UI) vs **Ingest agent** (VM upload). Remaining Josh work = film per `docs/FILM_THE_KITS.md` + copy to `~/kit-clips`. Point VM ingest at `.cursor/handoffs/ingest-kits.md`. Mention dual push, poka-yoke (false PASS is the red line), and that every change needs an adversarial note.
-
-9. **Commit and dual-push** (only after adversarial file exists and tests include the attacks).
+10. **Commit and push from this machine** (only after adversarial file exists and poka-yoke tests exist).
 
 ```sh
 git add -A
@@ -152,7 +176,7 @@ git commit -m "Operator QC console, poka-yoke false-PASS, adversarial tests; mir
 ./scripts/push_both.sh
 ```
 
-If you need more commits, adversarial delta + tests + push_both after each.
+Further commits: adversarial delta + tests + push_both each time.
 
 ## Verification
 
@@ -163,8 +187,6 @@ from state import AppState
 s=AppState(mock=True); s.scan(); m=s.run_gate()["metrics"]
 assert m["n"]>=30
 q=s.queue(); assert q, "expected HOLD or audit queue"
-# false-PASS poka-yoke: no AUTO_PASS with low conf / missing / inconsistent
-from gate import decide_all
 dec={d["unit_id"]:d for d in s.store.load_decisions()}
 for u in s.store.load_units():
     d=dec[u["id"]]
@@ -177,37 +199,39 @@ for u in s.store.load_units():
         assert not insp.get("inconsistent")
 print("cold_coverage", m["coverage"], "queue", len(q))
 PY
-test -f .cursor/adversarial/*cowork.md
-git remote -v   # origin AND github
-git status -sb
+# start ./scripts/run_mock.sh if needed
+curl -sS http://127.0.0.1:8080/ | grep -E "Operator|Gate was right"
+ls .cursor/adversarial/*cowork.md
+git remote -v
+git ls-remote github HEAD
 ```
 
-Pass: tests OK including poka-yoke; mock AUTO_PASS never on low/missing/inconsistent/occlusion; HTML contains Operator + Gate was right; A disabled on HOLD; adversarial file has Result: pass on the required attacks; `github` remote exists; `git ls-remote github HEAD` matches local HEAD. Fail: do not mark done; fix or `status: blocked` with the failing command.
+Pass: tests OK including poka-yoke; no AUTO_PASS on low/missing/inconsistent/occlusion; HTML has Operator + Gate was right; A disabled on HOLD; adversarial Results are pass; github HEAD matches local. Fail: fix or `status: blocked` with the failing command.
 
 ## Report back
 
 ```
 handoff: chatgpt-cowork
 status: done | blocked | partial
+machine: josh-laptop
 checks:
 - tests: pass | fail
 - poka_yoke_tests: pass | fail
 - adversarial_review: pass | fail
-- operator_ui: pass | fail
-- stack_wired: pass | fail | partial (<which pieces degraded>)
-- origin_push: pass | fail
+- operator_ui_localhost: pass | fail
+- stack_wired_in_code: pass | fail | partial
+- origin_push: pass | fail | skipped (no origin auth)
 - github_remote: pass | fail
 - github_push: pass | fail
 - footage_only_remaining: pass | fail
 artifacts:
 - branch: cursor/lego-kit-qc-gate-72e3
-- origin: origin.cursor.com/git/bryce-mcg/Scribner
 - github: https://github.com/<owner>/Scribner
 - adversarial: .cursor/adversarial/<file>
 - mock: SCRIBNER_MOCK=1 ./scripts/run_mock.sh → http://127.0.0.1:8080
-next: Josh films kits to ~/kit-clips; VM agent runs ingest-kits; operator uses UI
+next: Josh films to ~/kit-clips on this laptop; later VM ingest-kits; operator uses UI
 ```
 
 ## Stop and escalate
 
-Write `status: blocked` and stop if: cannot authenticate to GitHub after one `gh auth login` / token attempt; tests fail after two fix cycles; an adversarial false-PASS still reproduces after one fix cycle (report the attack, do not ship); VSS/DataEngine rewrite seems required (it is not); clip files are the only way to proceed (they are not — mock is enough). Do not invent a GitHub URL you did not push to.
+Write `status: blocked` and stop if: no Scribner tree on this laptop and Origin clone fails; cannot authenticate to GitHub after one `gh auth login` / token attempt; tests fail after two fix cycles; a false-PASS attack still reproduces after one fix cycle; you think you need the workshop VM to finish (you do not — mock is enough). Do not invent a GitHub URL you did not push to.
