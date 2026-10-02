@@ -1,7 +1,7 @@
 """VSS HTTP client. Mirrors vast-builders-challenge retrieval/ + ingest/ skills.
 
 JWT from POST /api/v1/auth/login (retrieval/login). Playback endpoints take
-``?token=`` because <video> cannot set headers — we still proxy /clip
+``?token=`` because <video> cannot set headers. We still proxy /clip
 server-side so the browser never sees the JWT.
 
 Only routes listed in the challenge skills. No /reports, /alerts, /analytics,
@@ -261,3 +261,18 @@ class VssClient:
         )
         r.raise_for_status()
         return r.content
+
+    def suggestions(self) -> Any:
+        r = self._get("/api/v1/suggestions")
+        r.raise_for_status()
+        return r.json()
+
+    def agent_ask(self, question: str, original_video: str = "", top_k: int = 10) -> Dict[str, Any]:
+        if not 1 <= top_k <= 50:
+            raise VssError(f"agent/ask top_k must be 1-50, got {top_k}")
+        body: Dict[str, Any] = {"question": question, "top_k": top_k}
+        if original_video:
+            body["original_video"] = original_video
+        r = self._post("/api/v1/agent/ask", json=body)
+        r.raise_for_status()
+        return r.json()
