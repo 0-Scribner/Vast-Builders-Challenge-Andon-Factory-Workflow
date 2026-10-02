@@ -1,7 +1,7 @@
 """Adversarial tests vs https://github.com/vast-data/vast-builders-challenge
 
 These attacks should fail closed. If one succeeds, the gate is not using
-the official Builders Stack (or it can false-PASS a kit).
+the official Builders Stack (or it can false-CLEAR an unsafe aisle).
 """
 
 from __future__ import annotations
@@ -42,17 +42,24 @@ def _unit(**kwargs):
     insp = kwargs.pop("inspection", None)
     base = {
         "id": kwargs.pop("id", "u-1"),
-        "kit_id": "race-car",
+        "kit_id": "warehouse-aisle",
         "inspection": insp
         or {
             "complete": True,
             "confidence": "high",
             "missing": [],
+            "hazards": [],
             "unclear": [],
             "inconsistent": False,
+            "path_clear": True,
+            "near_miss": False,
+            "person": False,
+            "vehicle_present": False,
         },
         "prior": {"p_fail_prior": kwargs.pop("p_fail_prior", 0.05)},
         "occlusion": kwargs.pop("occlusion", False),
+        "yolo_person": kwargs.pop("yolo_person", False),
+        "yolo_vehicle": kwargs.pop("yolo_vehicle", False),
     }
     base.update(kwargs)
     return base
@@ -181,58 +188,72 @@ class OfficialRepoContractTests(unittest.TestCase):
 
 
 class GateFailClosedTests(unittest.TestCase):
-    def test_inconsistent_caption_never_auto_pass(self) -> None:
+    def test_inconsistent_caption_never_auto_clear(self) -> None:
         cap = (
-            "PRESENT: 1 red roof. MISSING: 4 black wheels. UNCLEAR: NONE. "
-            "COMPLETE: YES. CONFIDENCE: HIGH."
+            "PERSON: YES. VEHICLE: forklift. MOTION: MOVING. DISTANCE: CLOSE. "
+            "PATH_CLEAR: YES. NEAR_MISS: YES. HAZARD: NONE. UNCLEAR: NONE. "
+            "CONFIDENCE: HIGH."
         )
-        rec = parse_caption(cap, kit_id="race-car")
+        rec = parse_caption(cap, kit_id="warehouse-aisle")
         self.assertTrue(rec["inconsistent"])
         u = _unit(inspection=rec, p_fail_prior=0.01)
         self.assertTrue(pass_blocked(u))
         d = decide_one(u, None, {"t_pass": 0.5, "t_fail": 0.9}, audit_fraction=0)
-        self.assertNotEqual(d["decision"], "AUTO_PASS")
+        self.assertNotEqual(d["decision"], "AUTO_CLEAR")
+        self.assertEqual(d["decision"], "AUTO_ALERT")
 
-    def test_missing_parts_never_auto_pass(self) -> None:
+    def test_named_hazard_never_auto_clear(self) -> None:
         rec = {
             "complete": True,
             "confidence": "high",
-            "missing": ["4 black wheels"],
+            "missing": ["forklift-near-person"],
+            "hazards": ["forklift-near-person"],
             "unclear": [],
             "inconsistent": True,
+            "path_clear": True,
+            "near_miss": True,
         }
         d = decide_one(_unit(inspection=rec, p_fail_prior=0.01), None, {"t_pass": 0.5, "t_fail": 0.9}, audit_fraction=0)
-        self.assertNotEqual(d["decision"], "AUTO_PASS")
+        self.assertNotEqual(d["decision"], "AUTO_CLEAR")
 
-    def test_low_confidence_never_auto_pass(self) -> None:
+    def test_low_confidence_never_auto_clear(self) -> None:
         rec = {
             "complete": True,
             "confidence": "low",
             "missing": [],
+            "hazards": [],
             "unclear": [],
             "inconsistent": False,
+            "path_clear": True,
+            "near_miss": False,
         }
         d = decide_one(_unit(inspection=rec, p_fail_prior=0.01), None, {"t_pass": 0.5, "t_fail": 0.9}, audit_fraction=0)
         self.assertEqual(d["decision"], "HOLD")
 
-    def test_unclear_never_auto_pass(self) -> None:
+    def test_unclear_never_auto_clear(self) -> None:
         rec = {
             "complete": True,
             "confidence": "high",
             "missing": [],
-            "unclear": ["1 blue door"],
+            "hazards": [],
+            "unclear": ["DISTANCE"],
             "inconsistent": False,
+            "path_clear": True,
+            "near_miss": False,
         }
         d = decide_one(_unit(inspection=rec, p_fail_prior=0.01), None, {"t_pass": 0.5, "t_fail": 0.9}, audit_fraction=0)
-        self.assertNotEqual(d["decision"], "AUTO_PASS")
+        self.assertNotEqual(d["decision"], "AUTO_CLEAR")
 
-    def test_occlusion_never_auto_pass(self) -> None:
+    def test_occlusion_never_auto_clear(self) -> None:
         rec = {
             "complete": True,
             "confidence": "high",
             "missing": [],
+            "hazards": [],
             "unclear": [],
             "inconsistent": False,
+            "path_clear": True,
+            "near_miss": False,
         }
         d = decide_one(
             _unit(inspection=rec, p_fail_prior=0.01, occlusion=True),
@@ -242,21 +263,25 @@ class GateFailClosedTests(unittest.TestCase):
         )
         self.assertEqual(d["decision"], "HOLD")
 
-    def test_complete_no_forced_auto_fail_not_pass(self) -> None:
+    def test_near_miss_forced_auto_alert_not_clear(self) -> None:
         rec = {
             "complete": False,
             "confidence": "high",
-            "missing": ["4 black wheels"],
+            "missing": ["forklift-near-person"],
+            "hazards": ["forklift-near-person"],
             "unclear": [],
             "inconsistent": False,
+            "path_clear": False,
+            "near_miss": True,
         }
         d = decide_one(_unit(inspection=rec, p_fail_prior=0.01), None, {"t_pass": 0.5, "t_fail": 0.9}, audit_fraction=0)
-        self.assertEqual(d["decision"], "AUTO_FAIL")
+        self.assertEqual(d["decision"], "AUTO_ALERT")
 
-    def test_pack_c_missing_gap_never_auto_pass(self) -> None:
+    def test_pack_c_near_miss_caption_never_auto_clear(self) -> None:
         cap = (
-            "PRESENT: a pallet-free walkway. MISSING: person-vehicle separation. "
-            "UNCLEAR: NONE. COMPLETE: NO. CONFIDENCE: HIGH."
+            "PERSON: YES. VEHICLE: forklift. MOTION: MOVING. DISTANCE: CLOSE. "
+            "PATH_CLEAR: NO. NEAR_MISS: YES. HAZARD: forklift-near-person. "
+            "UNCLEAR: NONE. CONFIDENCE: HIGH."
         )
         rec = parse_caption(cap, kit_id="warehouse-aisle")
         d = decide_one(
@@ -265,8 +290,28 @@ class GateFailClosedTests(unittest.TestCase):
             {"t_pass": 0.5, "t_fail": 0.9},
             audit_fraction=0,
         )
-        self.assertNotEqual(d["decision"], "AUTO_PASS")
-        self.assertEqual(d["decision"], "AUTO_FAIL")
+        self.assertNotEqual(d["decision"], "AUTO_CLEAR")
+        self.assertEqual(d["decision"], "AUTO_ALERT")
+
+    def test_yolo_person_vehicle_never_sole_source_clear(self) -> None:
+        rec = {
+            "complete": None,
+            "confidence": "medium",
+            "missing": [],
+            "hazards": [],
+            "unclear": [],
+            "inconsistent": False,
+            "path_clear": None,
+            "near_miss": None,
+        }
+        d = decide_one(
+            _unit(inspection=rec, p_fail_prior=0.01, yolo_person=True, yolo_vehicle=True),
+            None,
+            {"t_pass": 0.5, "t_fail": 0.9},
+            audit_fraction=0,
+        )
+        self.assertNotEqual(d["decision"], "AUTO_CLEAR")
+        self.assertTrue(pass_blocked(_unit(inspection=rec, yolo_person=True, yolo_vehicle=True)))
 
 
 class IngestPokaYokeTests(unittest.TestCase):
@@ -274,42 +319,43 @@ class IngestPokaYokeTests(unittest.TestCase):
         with self.assertRaises(IngestRejected):
             assert_uploadable(
                 "https://www.youtube.com/watch?v=dQw4w9wgGcQ",
-                prompt_for_kit("race-car"),
+                prompt_for_kit("warehouse-aisle"),
             )
 
     def test_http_file_rejected(self) -> None:
         with self.assertRaises(IngestRejected):
-            assert_uploadable("https://example.com/kit.mp4", prompt_for_kit("race-car"))
+            assert_uploadable("https://example.com/kit.mp4", prompt_for_kit("warehouse-aisle"))
 
     def test_random_filename_rejected(self) -> None:
         with self.assertRaises(IngestRejected):
-            assert_uploadable("/tmp/random.mp4", prompt_for_kit("race-car"))
+            assert_uploadable("/tmp/random.mp4", prompt_for_kit("warehouse-aisle"))
 
     def test_unknown_kit_rejected(self) -> None:
         with self.assertRaises(IngestRejected):
-            assert_uploadable("/tmp/kit-spaceship_unit-001.mp4", prompt_for_kit("race-car"))
+            assert_uploadable("/tmp/kit-spaceship_unit-001.mp4", prompt_for_kit("warehouse-aisle"))
 
     def test_overlong_prompt_rejected(self) -> None:
         with self.assertRaises(IngestRejected):
             assert_uploadable(
-                "/tmp/kit-race-car_unit-001.mp4",
+                "/tmp/kit-warehouse-aisle_unit-001.mp4",
                 "x" * (CUSTOM_PROMPT_MAX + 1),
             )
 
     def test_legal_filename_and_prompt_ok(self) -> None:
         kid = assert_uploadable(
-            "/tmp/kit-race-car_unit-014.mp4",
-            prompt_for_kit("race-car"),
-        )
-        self.assertEqual(kid, "race-car")
-        self.assertIn("race-car", kit_ids())
-
-    def test_legal_pack_c_filename_ok(self) -> None:
-        kid = assert_uploadable(
             "/tmp/kit-warehouse-aisle_unit-014.mp4",
             prompt_for_kit("warehouse-aisle"),
         )
         self.assertEqual(kid, "warehouse-aisle")
+        self.assertIn("warehouse-aisle", kit_ids())
+        self.assertNotIn("race-car", kit_ids())
+
+    def test_legal_cross_pack_filename_ok(self) -> None:
+        kid = assert_uploadable(
+            "/tmp/kit-person-near-vehicle_unit-014.mp4",
+            prompt_for_kit("person-near-vehicle"),
+        )
+        self.assertEqual(kid, "person-near-vehicle")
 
     def test_upload_fields_drop_scenario_when_custom_prompt_set(self) -> None:
         out = filter_upload_fields(
@@ -317,7 +363,7 @@ class IngestPokaYokeTests(unittest.TestCase):
                 "custom_prompt": "hello",
                 "scenario": "general",
                 "invented": "nope",
-                "tags": "kit:race-car",
+                "tags": "scene:warehouse-aisle",
                 "camera_id": "",
             }
         )
@@ -339,44 +385,44 @@ class ReviewPokaYokeTests(unittest.TestCase):
             d for d in self.state.store.load_decisions() if d["decision"] == "HOLD"
         )
         with self.assertRaises(ValueError):
-            self.state.review(hold["unit_id"], "COMPLETE", reason="agree", gate_ok=True)
+            self.state.review(hold["unit_id"], "CLEAR", reason="agree", gate_ok=True)
 
     def test_override_agree_rejected(self) -> None:
         auto_fail = next(
             (
                 d
                 for d in self.state.store.load_decisions()
-                if d["decision"] == "AUTO_FAIL"
+                if d["decision"] == "AUTO_ALERT"
             ),
             None,
         )
         if auto_fail is None:
-            self.skipTest("cold start produced no AUTO_FAIL")
+            self.skipTest("cold start produced no AUTO_ALERT")
         with self.assertRaises(ValueError):
-            self.state.review(auto_fail["unit_id"], "COMPLETE", reason="agree")
+            self.state.review(auto_fail["unit_id"], "CLEAR", reason="agree")
 
-    def test_auto_fail_to_complete_needs_confirm(self) -> None:
+    def test_auto_alert_to_clear_needs_confirm(self) -> None:
         auto_fail = next(
             (
                 d
                 for d in self.state.store.load_decisions()
-                if d["decision"] == "AUTO_FAIL"
+                if d["decision"] == "AUTO_ALERT"
             ),
             None,
         )
         if auto_fail is None:
-            self.skipTest("cold start produced no AUTO_FAIL")
+            self.skipTest("cold start produced no AUTO_ALERT")
         with self.assertRaises(ValueError):
             self.state.review(
                 auto_fail["unit_id"],
-                "COMPLETE",
-                reason="vlm_false_missing",
+                "CLEAR",
+                reason="vlm_false_alert",
                 confirm_escape=False,
             )
         self.state.review(
             auto_fail["unit_id"],
-            "COMPLETE",
-            reason="vlm_false_missing",
+            "CLEAR",
+            reason="vlm_false_alert",
             confirm_escape=True,
         )
 
@@ -400,11 +446,11 @@ class NoCanaryAndNoInventedClientTests(unittest.TestCase):
             with self.assertRaises(VssError):
                 client.upload_video(
                     "https://youtu.be/xxxx",
-                    custom_prompt=prompt_for_kit("race-car"),
-                    tags="kit:race-car",
-                    camera_id="kit-station-1",
-                    capture_type="general",
-                    location="kit-bench",
+                    custom_prompt=prompt_for_kit("warehouse-aisle"),
+                    tags="scene:warehouse-aisle",
+                    camera_id="sdg_warehouse_cam-2",
+                    capture_type="warehouse",
+                    location="warehouse3",
                 )
 
 

@@ -44,12 +44,17 @@ def _wandb_prior(inspection: Dict[str, Any], kit_id: str) -> Optional[Dict[str, 
         else None,
     )
     payload = {
-        "kit_id": kit_id,
-        "complete": inspection.get("complete"),
-        "confidence": inspection.get("confidence"),
-        "missing": inspection.get("missing"),
+        "scene_id": kit_id,
+        "path_clear": inspection.get("path_clear"),
+        "near_miss": inspection.get("near_miss"),
+        "hazards": inspection.get("hazards") or inspection.get("missing"),
         "unclear": inspection.get("unclear"),
-        "present": inspection.get("present"),
+        "person": inspection.get("person"),
+        "vehicle_present": inspection.get("vehicle_present"),
+        "motion": inspection.get("motion"),
+        "distance": inspection.get("distance"),
+        "confidence": inspection.get("confidence"),
+        "inconsistent": inspection.get("inconsistent"),
         "caption": (inspection.get("raw") or "")[:800],
     }
     resp = client.chat.completions.create(
@@ -60,14 +65,16 @@ def _wandb_prior(inspection: Dict[str, Any], kit_id: str) -> Optional[Dict[str, 
             {
                 "role": "system",
                 "content": (
-                    "You verify video completeness from a parsed caption. "
+                    "You verify warehouse path safety from a parsed caption. "
                     "Reply with ONLY JSON: "
                     '{"p_fail_prior": float 0-1, "proposed": "PASS"|"FAIL"|"HOLD", '
                     '"rationale": string ≤140 chars}. '
-                    "p_fail_prior is P(the unit is incomplete). "
-                    "If missing parts are named, p_fail_prior ≥ 0.8. "
-                    "If complete=YES and confidence=high, p_fail_prior ≤ 0.15. "
-                    "If unclear, around 0.5."
+                    "p_fail_prior is P(the aisle is UNSAFE / a near-miss). "
+                    "If NEAR_MISS is YES, PATH_CLEAR is NO, or a named hazard exists, "
+                    "p_fail_prior ≥ 0.8. "
+                    "If PATH_CLEAR=YES, NEAR_MISS=NO, HIGH confidence, p_fail_prior ≤ 0.15. "
+                    "If UNCLEAR or LOW, around 0.5. "
+                    "Never propose PASS when a person is close to a moving vehicle."
                 ),
             },
             {"role": "user", "content": json.dumps(payload)},

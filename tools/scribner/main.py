@@ -1,4 +1,4 @@
-"""Scribner FastAPI app.
+"""Scribner FastAPI app — warehouse near-miss / path-clear gate.
 
 Agent note
 ----------
@@ -35,7 +35,19 @@ from pydantic import BaseModel, Field
 import builders_stack
 import config
 from gpu_client import available as gpu_available
-from kits import CAMERA_ID, KITS, LOCATION, REASON_CODES, kit_ids, prompt_for_kit
+from kits import (
+    CAMERA_ID,
+    KITS,
+    LINE,
+    LOCATION,
+    PAYOFF_QUERY,
+    PLAN_B_BRANCH,
+    PRODUCT,
+    REASON_CODES,
+    STACK_LINE,
+    kit_ids,
+    prompt_for_kit,
+)
 from report import render_markdown
 from state import AppState
 from vss_client import VssClient, VssError
@@ -51,7 +63,7 @@ async def _lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Scribner completeness gate", version="1.1.0", lifespan=_lifespan)
+app = FastAPI(title="Scribner warehouse near-miss gate", version="2.0.0", lifespan=_lifespan)
 
 STATIC = config.STATIC_DIR
 STATIC.mkdir(parents=True, exist_ok=True)
@@ -59,11 +71,30 @@ STATIC.mkdir(parents=True, exist_ok=True)
 
 class ReviewBody(BaseModel):
     unit_id: str
-    verdict: str = Field(..., description="COMPLETE or INCOMPLETE (aliases: C/I, PASS/FAIL)")
+    verdict: str = Field(..., description="CLEAR or UNSAFE (aliases: C/U, A/O, PASS/FAIL)")
     reason: str = "agree"
     notes: str = ""
     gate_ok: bool | None = None
     confirm_escape: bool = False
+
+
+def _inspection_public(insp: Dict[str, Any]) -> Dict[str, Any]:
+    insp = insp or {}
+    return {
+        "complete": insp.get("complete"),
+        "confidence": insp.get("confidence"),
+        "path_clear": insp.get("path_clear"),
+        "near_miss": insp.get("near_miss"),
+        "hazards": insp.get("hazards") or insp.get("missing") or [],
+        "missing": insp.get("missing") or insp.get("hazards") or [],
+        "unclear": insp.get("unclear"),
+        "person": insp.get("person"),
+        "vehicle": insp.get("vehicle"),
+        "vehicle_present": insp.get("vehicle_present"),
+        "motion": insp.get("motion"),
+        "distance": insp.get("distance"),
+        "inconsistent": insp.get("inconsistent"),
+    }
 
 
 @app.get("/health")
@@ -71,10 +102,14 @@ def health() -> Dict[str, Any]:
     return {
         "ok": True,
         "mock": state.mock,
-        "product": "kit-completeness",
+        "line": LINE,
+        "product": PRODUCT,
         "corpus": "provided",
         "pack": config.PACK,
         "camera_id": CAMERA_ID,
+        "payoff_query": PAYOFF_QUERY,
+        "stack_line": STACK_LINE,
+        "plan_b_branch": PLAN_B_BRANCH,
         "kits": kit_ids(),
         "store": state.store.state_summary(),
         "stack": builders_stack.health_snapshot(),
@@ -116,12 +151,9 @@ def api_units() -> Dict[str, Any]:
                 "decision": decisions.get(uid),
                 "label": labels.get(uid),
                 "prior": u.get("prior"),
-                "inspection": {
-                    "complete": (u.get("inspection") or {}).get("complete"),
-                    "confidence": (u.get("inspection") or {}).get("confidence"),
-                    "missing": (u.get("inspection") or {}).get("missing"),
-                    "unclear": (u.get("inspection") or {}).get("unclear"),
-                },
+                "yolo_person": u.get("yolo_person"),
+                "yolo_vehicle": u.get("yolo_vehicle"),
+                "inspection": _inspection_public(u.get("inspection") or {}),
             }
         )
     return {"units": rows}
@@ -152,6 +184,8 @@ def api_queue() -> Dict[str, Any]:
                 "prior": u.get("prior"),
                 "decision_row": u.get("decision_row"),
                 "occlusion": u.get("occlusion"),
+                "yolo_person": u.get("yolo_person"),
+                "yolo_vehicle": u.get("yolo_vehicle"),
                 "source": u.get("source"),
             }
         )
@@ -187,18 +221,24 @@ def api_metrics() -> Dict[str, Any]:
 
 @app.get("/api/kits")
 def api_kits() -> Dict[str, Any]:
+    scenes = {
+        kid: {
+            "name": KITS[kid]["name"],
+            "prompt": prompt_for_kit(kid),
+            "chars": len(prompt_for_kit(kid)),
+        }
+        for kid in kit_ids()
+    }
     return {
-        "kits": {
-            kid: {
-                "name": KITS[kid]["name"],
-                "prompt": prompt_for_kit(kid),
-                "chars": len(prompt_for_kit(kid)),
-            }
-            for kid in kit_ids()
-        },
+        "kits": scenes,
+        "scenes": scenes,
         "reasons": REASON_CODES,
         "camera_id": CAMERA_ID,
         "location": LOCATION,
+        "payoff_query": PAYOFF_QUERY,
+        "stack_line": STACK_LINE,
+        "line": LINE,
+        "product": PRODUCT,
     }
 
 

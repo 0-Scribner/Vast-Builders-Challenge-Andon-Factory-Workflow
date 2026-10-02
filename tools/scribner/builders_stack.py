@@ -10,7 +10,8 @@ pattern documented there. Re-extract with::
       python3 scripts/extract_builders_stack.py
 
 Agent note: never hardcode GPU hosts from skill examples. Never wire
-Canary-1B into the kit gate (kits are silent; Canary is optional ASR).
+Canary-1B into the aisle gate (warehouse clips have no speech; Canary
+is optional ASR).
 """
 
 from __future__ import annotations
@@ -338,7 +339,7 @@ def scan_scribner_violations() -> List[str]:
             hits.append(f"{rel} hardcodes GPU_HOST 166.19.38.112 (use $COSMOS3_REASON_URL / $YOLO_URL / $COSMOS_EMBED1_URL)")
         if p.name in {"gpu_client.py", "vss_client.py", "scan.py", "llm.py", "main.py"}:
             if re.search(r"CANARY_1B_URL\s*\)", text) or "CANARY_1B_URL/" in text:
-                hits.append(f"{rel} calls Canary-1B (not in the kit gate; optional ASR only)")
+                hits.append(f"{rel} calls Canary-1B (not in the aisle gate; optional ASR only)")
             if "/v1/audio/transcriptions" in text:
                 hits.append(f"{rel} wires Canary ASR")
     for path in vss_paths_in_scribner():

@@ -61,22 +61,29 @@ class AppState:
         confirm_escape: bool = False,
     ) -> Dict[str, Any]:
         verdict = verdict.upper().strip()
-        if verdict in {"PASS", "COMPLETE", "C", "YES"}:
-            verdict = "COMPLETE"
-        elif verdict in {"FAIL", "INCOMPLETE", "I", "NO"}:
-            verdict = "INCOMPLETE"
+        if verdict in {"PASS", "COMPLETE", "C", "YES", "CLEAR", "A", "ACCEPT"}:
+            verdict = "CLEAR"
+        elif verdict in {"FAIL", "INCOMPLETE", "I", "NO", "UNSAFE", "U", "O", "OBJECT", "ALERT"}:
+            verdict = "UNSAFE"
         else:
-            raise ValueError("verdict must be COMPLETE or INCOMPLETE")
+            raise ValueError("verdict must be CLEAR or UNSAFE")
         decisions = {d.get("unit_id"): d for d in self.store.load_decisions()}
         drow = decisions.get(unit_id) or {}
         auto = drow.get("decision") or "HOLD"
         if gate_ok is True and auto == "HOLD":
-            raise ValueError("cannot mark gate_ok on HOLD; pick COMPLETE or INCOMPLETE")
+            raise ValueError("cannot mark gate_ok on HOLD; pick CLEAR or UNSAFE")
+        if gate_ok is True:
+            if auto in {"AUTO_CLEAR", "AUTO_PASS"}:
+                verdict = "CLEAR"
+            elif auto in {"AUTO_ALERT", "AUTO_FAIL"}:
+                verdict = "UNSAFE"
+            else:
+                raise ValueError("cannot mark gate_ok on HOLD; pick CLEAR or UNSAFE")
         overrode = apply_label_override(drow, verdict)
         if overrode and (reason or "").strip() in {"", "agree"}:
             raise ValueError("override requires a non-agree reason")
-        if auto == "AUTO_FAIL" and verdict == "COMPLETE" and not confirm_escape:
-            raise ValueError("AUTO_FAIL to COMPLETE requires confirm_escape=true")
+        if auto in {"AUTO_FAIL", "AUTO_ALERT"} and verdict == "CLEAR" and not confirm_escape:
+            raise ValueError("AUTO_ALERT to CLEAR requires confirm_escape=true")
         label = {
             "unit_id": unit_id,
             "verdict": verdict,

@@ -30,7 +30,7 @@ def fit_logistic(
     steps: int = 400,
     lr: float = 0.08,
 ) -> Dict[str, Any]:
-    """Fit w on labeled units. y=1 means INCOMPLETE (FAIL).
+    """Fit w on labeled units. y=1 means UNSAFE (near-miss / blocked path).
 
     Returns a serializable scorer dict. Empty labels → return the prior anchor.
     """
@@ -41,7 +41,7 @@ def fit_logistic(
         unit = indexed.get(lab.get("unit_id"))
         if not unit:
             continue
-        y = 1.0 if lab.get("verdict") == "INCOMPLETE" else 0.0
+        y = 1.0 if lab.get("verdict") in {"INCOMPLETE", "UNSAFE"} else 0.0
         weight = 2.0 if lab.get("overrode") else 1.0
         rows.append((vectorize(unit), y, weight))
     if not rows:
@@ -86,7 +86,7 @@ def derive_thresholds(
         if not unit:
             continue
         p = predict_p_fail(unit, scorer)
-        y = 1 if lab.get("verdict") == "INCOMPLETE" else 0
+        y = 1 if lab.get("verdict") in {"INCOMPLETE", "UNSAFE"} else 0
         pairs.append((p, y))
 
     # Cold start / tiny n: keep a wide band so humans see examples.
@@ -113,15 +113,18 @@ def derive_thresholds(
 
 def coverage_stats(decisions: Sequence[Dict[str, Any]]) -> Dict[str, float]:
     n = len(decisions) or 1
-    auto = sum(1 for d in decisions if d.get("decision") in {"AUTO_PASS", "AUTO_FAIL"})
-    auto_fail = sum(1 for d in decisions if d.get("decision") == "AUTO_FAIL")
-    auto_pass = sum(1 for d in decisions if d.get("decision") == "AUTO_PASS")
+    auto_ok = {"AUTO_PASS", "AUTO_FAIL", "AUTO_CLEAR", "AUTO_ALERT"}
+    auto = sum(1 for d in decisions if d.get("decision") in auto_ok)
+    auto_fail = sum(1 for d in decisions if d.get("decision") in {"AUTO_FAIL", "AUTO_ALERT"})
+    auto_pass = sum(1 for d in decisions if d.get("decision") in {"AUTO_PASS", "AUTO_CLEAR"})
     hold = sum(1 for d in decisions if d.get("decision") == "HOLD")
     return {
         "n": float(len(decisions)),
         "coverage": auto / n,
         "auto_pass_rate": auto_pass / n,
         "auto_fail_rate": auto_fail / n,
+        "auto_clear_rate": auto_pass / n,
+        "auto_alert_rate": auto_fail / n,
         "hold_rate": hold / n,
         "alarm_rate": auto_fail / n,
     }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Oracle-label every mock unit and print coverage before vs after retrain.
 
-Agent note: uses ``true_incomplete`` which exists only on mock fixtures.
+Agent note: uses ``true_unsafe`` which exists only on mock fixtures.
 Never read that field in the scorer or the live UI.
 """
 
@@ -27,14 +27,14 @@ def main() -> None:
     cold = st.run_gate()["metrics"]
     decisions = {d["unit_id"]: d for d in st.store.load_decisions()}
     for u in st.store.load_units():
-        verdict = "INCOMPLETE" if u["true_incomplete"] else "COMPLETE"
+        verdict = "UNSAFE" if u.get("true_unsafe") or u.get("true_incomplete") else "CLEAR"
         auto = (decisions.get(u["id"]) or {}).get("decision") or "HOLD"
         kwargs = {}
         reason = "agree"
-        if auto == "AUTO_PASS" and verdict == "INCOMPLETE":
-            reason = "vlm_missed_part"
-        elif auto == "AUTO_FAIL" and verdict == "COMPLETE":
-            reason = "vlm_false_missing"
+        if auto in {"AUTO_CLEAR", "AUTO_PASS"} and verdict == "UNSAFE":
+            reason = "vlm_missed_near_miss"
+        elif auto in {"AUTO_ALERT", "AUTO_FAIL"} and verdict == "CLEAR":
+            reason = "vlm_false_alert"
             kwargs["confirm_escape"] = True
         st.review(u["id"], verdict, reason=reason, **kwargs)
     warm = st.retrain()["metrics"]

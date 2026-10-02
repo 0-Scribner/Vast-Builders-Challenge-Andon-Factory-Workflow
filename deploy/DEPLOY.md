@@ -215,7 +215,7 @@ curl -sS -o /dev/null -w "%{http_code}\n" "http://${APP_HOST}/app"
 | Python or HTML | Recreate ConfigMap(s), `kubectl -n $NS rollout restart deploy/scribner` |
 | Credentials | Recreate Secret, restart |
 
-If live Explore has no `PRESENT:` captions yet, re-ingest Pack C
+If live Explore has no `PATH_CLEAR:` captions yet, re-ingest Pack C
 (`sdg_warehouse_cam-2`) with skill `ingest-kits` before claiming
-the live gate. Kit id is inferred from `camera_id` (Pack C →
+the live gate. Scene id is inferred from `camera_id` (Pack C →
 `warehouse-aisle`).

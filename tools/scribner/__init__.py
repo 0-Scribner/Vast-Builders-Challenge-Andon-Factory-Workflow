@@ -1,6 +1,5 @@
-"""Scribner kit-completeness gate package.
+"""Scribner warehouse near-miss gate package.
 
-Imports are sibling-relative so this directory can be mounted flat at
-``/code`` on the workshop cluster. Locally, run from this directory or
-set ``PYTHONPATH=tools/scribner``.
+On the workshop pod this directory is mounted at /code and imported
+as sibling modules (`import main`), not as `tools.scribner`.
 """

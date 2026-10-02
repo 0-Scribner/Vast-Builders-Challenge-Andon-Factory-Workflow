@@ -3,14 +3,15 @@
 Live path for Pack C is **re-ingest** of already-indexed SDG warehouse
 clips, then ``scan_live()`` walks Explore (filtered to
 ``sdg_warehouse_cam-2`` unless ``SCRIBNER_PACK=cross``) and runs the
-same PRESENT/MISSING parser as mock mode. Optional own kit uploads still
-scan via tags ``kit:race-car`` / filename.
+same PATH_CLEAR / NEAR_MISS parser as mock mode.
+
+YOLO person/vehicle **corroborates**. It must not sole-source AUTO_CLEAR.
 """
 
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import config
 from inspection import parse_caption
@@ -20,6 +21,7 @@ from mock_data import build_mock_units
 from vss_client import VssClient
 
 _KIT_TAG = re.compile(r"(?:kit|scene):([a-z0-9-]+)", re.I)
+_VEHICLE_WORDS = ("forklift", "truck", "car", "bus", "van", "vehicle", "pallet-jack")
 
 
 def scan_mock() -> List[Dict[str, Any]]:
@@ -87,11 +89,14 @@ def _unit_from_parent(client: VssClient, parent: Dict[str, Any], i: int) -> Dict
         except Exception:
             pass
     occlusion = False
+    yolo_person = False
+    yolo_vehicle = False
     if source:
         try:
             det = client.detections(source)
             classes = str((det or {}).get("object_classes") or "").lower()
             occlusion = _occlusion(kit_id, classes)
+            yolo_person, yolo_vehicle = _yolo_flags(classes)
         except Exception:
             occlusion = False
     inspection = parse_caption(caption, kit_id=kit_id)
@@ -107,6 +112,8 @@ def _unit_from_parent(client: VssClient, parent: Dict[str, Any], i: int) -> Dict
         "source": source or parent.get("original_video") or "",
         "original_video": parent.get("original_video") or "",
         "occlusion": occlusion,
+        "yolo_person": yolo_person,
+        "yolo_vehicle": yolo_vehicle,
         "mock": False,
     }
     unit["prior"] = prior_for(inspection, kit_id or "unknown")
@@ -114,10 +121,16 @@ def _unit_from_parent(client: VssClient, parent: Dict[str, Any], i: int) -> Dict
 
 
 def _occlusion(kit_id: str, classes: str) -> bool:
-    """Person/forklift are the subject of provided corpus kits, not occlusion."""
+    """Person/forklift are the subject of Pack C, not occlusion."""
     if is_corpus_kit(kit_id):
         return "hand" in classes
-    return "person" in classes or "hand" in classes
+    return "hand" in classes
+
+
+def _yolo_flags(classes: str) -> Tuple[bool, bool]:
+    person = "person" in (classes or "")
+    vehicle = any(w in (classes or "") for w in _VEHICLE_WORDS)
+    return person, vehicle
 
 
 def _as_tags(raw: Any) -> List[str]:

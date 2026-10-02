@@ -10,7 +10,9 @@ Optional ``$GPU_BEARER_TOKEN`` (gpu skills). config.example says NIMs may
 have no auth — send the header only when the token is set.
 
 Never hardcode a GPU host. Never call the optional ASR NIM from this
-module; it is not in the default VSS pipeline and kit clips are silent.
+module; it is not in the default VSS pipeline and warehouse clips have
+no speech. YOLO person/vehicle corroborates the caption and must not
+sole-source AUTO_CLEAR.
 """
 
 from __future__ import annotations
@@ -66,7 +68,7 @@ def yolo_health() -> Dict[str, Any]:
 
 
 def yolo_infer(video_base64: str, filename: str = "clip.mp4") -> Dict[str, Any]:
-    """Occlusion only. YOLO11 has no LEGO classes."""
+    """Person/vehicle corroboration. Never sole-source AUTO_CLEAR from YOLO."""
     base = _need(config.YOLO_URL, "YOLO_URL")
     r = requests.post(
         f"{base}/v1/infer",
@@ -82,9 +84,23 @@ def yolo_infer(video_base64: str, filename: str = "clip.mp4") -> Dict[str, Any]:
     return r.json()
 
 
-def occlusion_from_yolo(payload: Dict[str, Any]) -> bool:
+_VEHICLE_CLASSES = ("forklift", "truck", "car", "bus", "van", "vehicle")
+
+
+def yolo_person_vehicle(payload: Dict[str, Any]) -> Dict[str, bool]:
+    """Corroborate person/vehicle. Gate still requires a HIGH PATH_CLEAR caption."""
     classes = str(payload.get("object_classes") or "").lower()
-    return "person" in classes or "hand" in classes
+    return {
+        "yolo_person": "person" in classes,
+        "yolo_vehicle": any(v in classes for v in _VEHICLE_CLASSES),
+    }
+
+
+def occlusion_from_yolo(payload: Dict[str, Any], *, corpus: bool = True) -> bool:
+    classes = str(payload.get("object_classes") or "").lower()
+    if corpus:
+        return "hand" in classes
+    return "hand" in classes
 
 
 def embed_text(text: str) -> List[float]:

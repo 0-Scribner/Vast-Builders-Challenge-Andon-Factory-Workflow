@@ -32,6 +32,6 @@ export BUILDERS_CHALLENGE_DIR=/tmp/vast-builders-challenge
 - YouTube / internet video
 - Docker build/push; DataEngine rebuild; native apps
 - Hardcoded GPU host `166.19.38.112` (skill example only — use env URLs)
-- Canary-1B in the kit gate (`CANARY_1B_URL` is documented and **unread for inference**)
+- Canary-1B in the aisle gate (`CANARY_1B_URL` is documented and **unread for inference**)
 
 Machine-readable copy: `tools/scribner/builders_stack.py` + `builders_stack_lock.json`.

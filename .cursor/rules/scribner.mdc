@@ -1,29 +1,32 @@
 ---
-description: Scribner kit-completeness gate. Applies to every session in this repo.
+description: Scribner warehouse near-miss gate (Primary). Applies to every session in this repo.
 alwaysApply: true
 ---
 
 # Scribner
 
-You are helping a team ship a completeness quality gate on the official provided video packs (Pack C by default). Read `AGENTS.md` first.
+You are helping a team ship the Primary warehouse path-clear / near-miss gate on official Pack C videos. Read `AGENTS.md` first. Plan B (LEGO completeness) is `cursor/plan-b-lego-completeness-72e3`.
 
 ## Do
 
 - Use skills in `.cursor/skills/` before raw REST. For VSS, prefer the challenge repo skills (`ingest/upload-video`, `retrieval/*`, `gpu/*`, `deployment/deploy-app-no-registry`) over inventing curl.
 - Keep learning in `learn.py` as numpy-only logistic regression anchored to the VLM prior (`w0` puts weight 1 on `prior_logit`).
-- Treat `tools/scribner/kits.py` as the single source of truth for bills of materials. After editing kits, rewrite `prompts/kit_completeness_v1.txt` from `prompt_for_kit()` and confirm each prompt is ≤800 characters.
+- Treat `tools/scribner/kits.py` as the single source of truth for scene schema. After editing kits, rewrite `prompts/warehouse_near_miss_v1.txt` from `prompt_for_scene()` and confirm each prompt is ≤800 characters.
 - Persist labels and scorer versions through `store.py`. Never lose reviewer decisions on restart if the data dir is set.
 - Build a web app. Deploy on Kubernetes at path `/app` using `deploy-scribner`.
 - Bind env/APIs to `docs/BUILDERS_STACK.md`. Run `./scripts/run_adversarial.sh` after stack-touching changes.
+- Keep implicit stack identity in `/health` and the operator footer (`VAST · NVIDIA Cosmos · CoreWeave / W&B · Cursor` and the payoff query). Do not add a PPE billboard.
 
 ## Do not
 
 - Rebuild or redeploy DataEngine ingest functions.
 - Ask for credentials, hardcode them, or print `/config` values.
 - Add heavy Python deps or a JS build step.
-- Claim YOLO detects bricks. It does not. On Pack C, people/forklifts are the subject, not occlusion.
+- Sole-source AUTO_CLEAR from YOLO person/vehicle.
+- Build a hard-hat / PPE detector.
 - Ingest internet video.
 - Ship localhost as the judged demo.
+- Mix Plan B LEGO BOMs onto this branch.
 
 ## When stuck
 

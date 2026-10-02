@@ -9,34 +9,32 @@ Scribner’s judged corpus is **Pack C: Warehouse Safety** from the official
 | Location | `warehouse3` |
 | `camera_id` | `sdg_warehouse_cam-2` |
 | Indexed | ~178 short ceiling / aisle clips |
-| Kit id | `warehouse-aisle` |
+| Scene id | `warehouse-aisle` |
+| Payoff query | *person close to a moving vehicle* |
 | Example query | *Forklift approaching a person in a warehouse aisle* |
 
 The archive is **pre-ingested**. Live path is **re-ingest** (`ingest/reingest-videos` /
 `reingest-chunk`). Do not re-upload the corpus. Do not pull YouTube.
 
-Phone filming is **not** required for the judged product. Optional extra
-LEGO kits (`race-car`, `front-loader`) if Bryce later wants them:
+Phone filming is **not** required for the judged product. LEGO completeness
+(`race-car` / `front-loader`) is **Plan B** on branch
+`cursor/plan-b-lego-completeness-72e3` — do not mix those BOMs into Primary.
 
-- Filename `kit-<kit_id>_unit-<nnn>.mp4`
-- 4.0–4.8s, fill the frame, white paper, no hands
-- Skill still `ingest-kits` (upload path)
+## Path-safety checklist (Pack C)
 
-## Completeness checklist (Pack C)
+A CLEAR aisle has:
 
-A complete (safe) aisle has:
+- PATH_CLEAR YES
+- NEAR_MISS NO
+- no named hazard (forklift-near-person, pallet-in-walkway, person-in-aisle, blocked-path)
+- HIGH confidence, no UNCLEAR fields
 
-- a clear travel lane
-- person-vehicle separation
-- a pallet-free walkway
-- an unobstructed aisle path
-
-Salient misses (person-vehicle gap, pallet in walkway, blocked lane) are
-what AUTO_FAIL. Unclear distance is what HOLD is for.
+Salient UNSAFE (person close to a moving forklift, pallet in walkway) is
+what AUTO_ALERT. Unclear distance is what HOLD is for. False CLEAR is illegal.
 
 ## After the corpus is re-ingested
 
-Captions must contain `PRESENT:` and `COMPLETE:`. Then `POST /api/scan`
+Captions must contain `PATH_CLEAR:` and `NEAR_MISS:`. Then `POST /api/scan`
 on the Scribner app.
 
-Skill: `.cursor/skills/ingest-kits/SKILL.md`.
+Skill: `.cursor/skills/ingest-kits/SKILL.md` (alias `ingest-warehouse`).

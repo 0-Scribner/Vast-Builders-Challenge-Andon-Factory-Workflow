@@ -1,7 +1,7 @@
 # Handoff: re-ingest provided Pack C clips
 
 Give this file to the workshop-VM Cursor agent. It re-ingests the official
-Pack C warehouse archive so Scribner can scan PRESENT/MISSING captions.
+Pack C warehouse archive so Scribner can scan PATH_CLEAR / NEAR_MISS captions.
 Clips never go in git. Do not re-upload the corpus.
 
 ## Receiver
@@ -14,10 +14,10 @@ skill for the HTTP shape.
 ## Done when
 
 - [ ] Pack C (`sdg_warehouse_cam-2`) has been re-ingested with
-      `prompt_for_kit('warehouse-aisle')` so captions contain `PRESENT:` and
-      `COMPLETE:`.
+      `prompt_for_kit('warehouse-aisle')` so captions contain `PATH_CLEAR:` and
+      `NEAR_MISS:`.
 - [ ] Each prompt used is ≤800 characters. `scenario` omitted.
-- [ ] Explore lists warehouse parents; at least one caption has the BOM fields.
+- [ ] Explore lists warehouse parents; at least one caption has the schema fields.
 - [ ] A filled Report back block is shown to Bryce.
 - Out of scope: running the Scribner gate, reviewing units, retraining,
   deploying `/app`, committing video files, filming LEGO.
@@ -25,10 +25,10 @@ skill for the HTTP shape.
 ## Context
 
 Scribner parses Cosmos captions with `tools/scribner/inspection.py`. That
-parser only works if ingest used the BOM custom prompt from
+parser only works if ingest used the path-safety custom prompt from
 `tools/scribner/kits.py` (`prompt_for_kit`). Default `scenario=warehouse`
-produces unusable captions. Known corpus kit_ids: `warehouse-aisle`,
-`person-near-vehicle`. Optional own kits: `race-car`, `front-loader`.
+produces unusable captions. Known corpus scene ids: `warehouse-aisle`,
+`person-near-vehicle`. Plan B LEGO kits are **not** on this branch.
 Live path: Detector → Reasoner → Embedder → VastDB writer. Segmenter already
 ran on the provided packs.
 
@@ -48,9 +48,8 @@ ran on the provided packs.
 | Name | Where | Required |
 |------|--------|----------|
 | Team config | exactly one `/config/*.config` | yes |
-| BOM prompt | `prompt_for_kit('warehouse-aisle')` | yes |
+| Path-safety prompt | `prompt_for_kit('warehouse-aisle')` | yes |
 | Camera | `sdg_warehouse_cam-2` | yes |
-| Optional own clips | `$KIT_CLIPS_DIR` or `~/kit-clips` as `kit-<id>_unit-<nnn>.mp4` | no |
 
 ## Procedure
 
@@ -81,19 +80,15 @@ PYTHONPATH=tools/scribner python3 -c "from kits import prompt_for_kit; p=prompt_
 
 4. **Re-ingest one Pack C clip first** via `ingest/reingest-videos` /
    `POST /api/v1/dashboard/reingest` with that `custom_prompt`,
-   `camera_id=sdg_warehouse_cam-2`. Wait until Explore shows `PRESENT:`.
+   `camera_id=sdg_warehouse_cam-2`. Wait until Explore shows `PATH_CLEAR:`.
    Then continue the camera. Do not stampede the shared GPU queue.
 
 5. **Spot-check captions.** `GET /api/v1/videos/metadata?source=<preview_source>`.
-   `reasoning_content` must contain `PRESENT:` and `COMPLETE:`. If it is
+   `reasoning_content` must contain `PATH_CLEAR:` and `NEAR_MISS:`. If it is
    generic prose, re-ingest that one `original_video` again. Do not fall
    back to `scenario=general`.
 
-6. **Optional own clips.** Only if Bryce provided `kit-<id>_unit-<nnn>.mp4`
-   files: upload with `ingest/upload-video` and `prompt_for_kit(kit_id)`,
-   `camera_id=kit-station-1`. Skip if the clips dir is empty.
-
-7. **Stop.** Tell Bryce the units are ready for Scribner scan. Do not start reviewing.
+6. **Stop.** Tell Bryce the units are ready for Scribner scan. Do not start reviewing.
 
 ## Verification
 
@@ -102,7 +97,7 @@ curl -s "$BACKEND/api/v1/videos/explore?scope=all&limit=20&offset=0" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Pass: at least one `sdg_warehouse_cam-2` parent with a `PRESENT:` caption.
+Pass: at least one `sdg_warehouse_cam-2` parent with a `PATH_CLEAR:` caption.
 Fail: zero warehouse parents after 10 minutes → Report back `blocked`.
 
 ## Report back
@@ -114,15 +109,15 @@ checks:
 - login: pass | fail
 - prompt_chars: <n>
 - reingest_jobs: <n>
-- caption_has_PRESENT: pass | fail | not_checked
+- caption_has_PATH_CLEAR: pass | fail | not_checked
 artifacts:
 - camera_id: sdg_warehouse_cam-2
-- kit_id: warehouse-aisle
+- scene_id: warehouse-aisle
 next: scan_live / open Scribner queue; do not re-upload the corpus
 ```
 
 ## Stop and escalate
 
 Write `status: blocked` and stop if: no `/config/*.config`; login fails twice;
-Explore has no warehouse camera; captions lack `PRESENT:` after one sample
+Explore has no warehouse camera; captions lack `PATH_CLEAR:` after one sample
 re-ingest. Do not invent a new prompt. Do not fall back to `scenario=general`.

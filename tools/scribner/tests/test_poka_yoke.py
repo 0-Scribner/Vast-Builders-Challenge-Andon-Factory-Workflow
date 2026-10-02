@@ -1,4 +1,4 @@
-"""Poka-yoke API tests. False PASS is the red line."""
+"""Poka-yoke API tests. False CLEAR is the red line."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from fastapi import HTTPException  # noqa: E402
 
 import main  # noqa: E402
 from builders_stack import SOURCE_URL  # noqa: E402
+from kits import PAYOFF_QUERY, PRODUCT, STACK_LINE  # noqa: E402
 
 
 class ApiPokaYokeTests(unittest.TestCase):
@@ -31,6 +32,12 @@ class ApiPokaYokeTests(unittest.TestCase):
         self.assertEqual(body["stack"]["source"], SOURCE_URL)
         self.assertFalse(body["stack"]["canary_wired"])
         self.assertFalse(body["gpu"]["canary"])
+        self.assertEqual(body["product"], PRODUCT)
+        self.assertEqual(body["line"], "primary")
+        self.assertEqual(body["payoff_query"], PAYOFF_QUERY)
+        self.assertEqual(body["stack_line"], STACK_LINE)
+        self.assertEqual(body["plan_b_branch"], "cursor/plan-b-lego-completeness-72e3")
+        self.assertEqual(body["corpus"], "provided")
 
     def test_gate_ok_on_hold_is_400(self) -> None:
         q = main.api_queue()["queue"]
@@ -44,19 +51,24 @@ class ApiPokaYokeTests(unittest.TestCase):
             main.api_review(
                 main.ReviewBody(
                     unit_id=hold["id"],
-                    verdict="COMPLETE",
+                    verdict="CLEAR",
                     reason="agree",
                     gate_ok=True,
                 )
             )
         self.assertEqual(ctx.exception.status_code, 400)
 
-    def test_ui_is_original_completeness_operator(self) -> None:
+    def test_ui_is_warehouse_operator(self) -> None:
         html = (Path(__file__).resolve().parents[1] / "static" / "index.html").read_text(
             encoding="utf-8"
         )
-        self.assertIn("Complete", html)
-        self.assertIn("Incomplete", html)
-        self.assertIn("provided Pack C", html)
-        self.assertNotIn("AUTO_CLEAR", html)
-        self.assertNotIn("UNSAFE", html)
+        self.assertIn("AUTO_CLEAR", html)
+        self.assertIn("AUTO_ALERT", html)
+        self.assertIn("UNSAFE", html)
+        self.assertIn("review('CLEAR')", html)
+        self.assertIn("person close to a moving vehicle", html)
+        self.assertIn("VAST", html)
+        self.assertIn("NVIDIA Cosmos", html)
+        self.assertIn("False CLEAR", html)
+        self.assertNotIn("review('COMPLETE')", html)
+        self.assertNotIn("Incomplete", html)

@@ -1,16 +1,7 @@
-"""Feature vector for the kit-completeness scorer.
+"""Feature vector for the warehouse near-miss scorer.
 
-Agent note
-----------
-``FEATURE_NAMES`` is the contract with ``learn.py``. If you add a feature:
-
-1. Append it here (never insert in the middle — stored ``w`` vectors
-   would silently misalign).
-2. Set the matching slot in ``prior_anchor()``.
-3. Bump ``FEATURE_VERSION`` so old scorers are discarded.
-
-Index 1 is **always** ``prior_logit``. ``w0[1] = 1`` is how cold start
-equals the VLM/heuristic prior.
+Index 1 is always prior_logit. w0[1] = 1 so cold start equals the prior.
+FEATURE_VERSION 3 discards completeness-era scorers.
 """
 
 from __future__ import annotations
@@ -20,7 +11,7 @@ from typing import Any, Dict, List
 
 import numpy as np
 
-FEATURE_VERSION = 2
+FEATURE_VERSION = 3
 
 FEATURE_NAMES: List[str] = [
     "bias",
@@ -28,28 +19,27 @@ FEATURE_NAMES: List[str] = [
     "complete_yes",
     "complete_no",
     "complete_unknown",
-    "missing_count",
+    "hazard_count",
     "unclear_count",
     "conf_high",
     "conf_med",
     "conf_low",
-    "occlusion",
-    "kit_race_car",
-    "kit_front_loader",
-    "miss_wheels",
-    "miss_roof",
-    "miss_minifig",
-    "miss_windshield",
-    "miss_bucket",
+    "view_blocked",
+    "path_clear_yes",
+    "near_miss_yes",
+    "yolo_person",
+    "yolo_vehicle",
+    "person_yes",
+    "vehicle_yes",
+    "distance_close",
+    "motion_moving",
     "kit_warehouse_aisle",
     "kit_person_near_vehicle",
-    "miss_travel_lane",
-    "miss_person_gap",
-    "miss_walkway",
-    "miss_path",
+    "hz_forklift_near_person",
+    "hz_pallet_walkway",
+    "hz_blocked_path",
 ]
 
-# Clip logits so sigmoid/exp is stable.
 _LOGIT_CLIP = 8.0
 
 
@@ -68,18 +58,16 @@ def sigmoid(z: float) -> float:
 
 
 def prior_anchor() -> np.ndarray:
-    """w0: identity on prior_logit, zeros elsewhere. Cold start = the prior."""
     w = np.zeros(len(FEATURE_NAMES), dtype=np.float64)
     w[1] = 1.0
     return w
 
 
 def vectorize(unit: Dict[str, Any]) -> np.ndarray:
-    """Turn a unit dict (inspection + prior + detections) into x."""
     insp = unit.get("inspection") or {}
     prior = unit.get("prior") or {}
     p = float(prior.get("p_fail_prior", 0.5))
-    missing_ids = set(insp.get("part_ids_missing") or [])
+    hz = set(insp.get("part_ids_missing") or insp.get("hazards") or [])
     kit_id = unit.get("kit_id") or insp.get("kit_id") or ""
     complete = insp.get("complete")
     conf = insp.get("confidence")
@@ -89,23 +77,23 @@ def vectorize(unit: Dict[str, Any]) -> np.ndarray:
     x[2] = 1.0 if complete is True else 0.0
     x[3] = 1.0 if complete is False else 0.0
     x[4] = 1.0 if complete is None else 0.0
-    x[5] = min(len(insp.get("missing") or []) / 5.0, 1.5)
+    x[5] = min(len(insp.get("hazards") or insp.get("missing") or []) / 4.0, 1.5)
     x[6] = min(len(insp.get("unclear") or []) / 3.0, 1.5)
     x[7] = 1.0 if conf == "high" else 0.0
     x[8] = 1.0 if conf == "medium" else 0.0
     x[9] = 1.0 if conf == "low" else 0.0
-    x[10] = 1.0 if unit.get("occlusion") else 0.0
-    x[11] = 1.0 if kit_id == "race-car" else 0.0
-    x[12] = 1.0 if kit_id == "front-loader" else 0.0
-    x[13] = 1.0 if "wheels" in missing_ids else 0.0
-    x[14] = 1.0 if "roof" in missing_ids else 0.0
-    x[15] = 1.0 if "minifig" in missing_ids else 0.0
-    x[16] = 1.0 if "windshield" in missing_ids else 0.0
-    x[17] = 1.0 if "bucket" in missing_ids else 0.0
-    x[18] = 1.0 if kit_id == "warehouse-aisle" else 0.0
-    x[19] = 1.0 if kit_id == "person-near-vehicle" else 0.0
-    x[20] = 1.0 if "travel-lane" in missing_ids else 0.0
-    x[21] = 1.0 if "person-gap" in missing_ids else 0.0
-    x[22] = 1.0 if "walkway" in missing_ids else 0.0
-    x[23] = 1.0 if "path" in missing_ids else 0.0
+    x[10] = 1.0 if (unit.get("occlusion") or unit.get("view_blocked")) else 0.0
+    x[11] = 1.0 if insp.get("path_clear") is True else 0.0
+    x[12] = 1.0 if insp.get("near_miss") is True else 0.0
+    x[13] = 1.0 if unit.get("yolo_person") else 0.0
+    x[14] = 1.0 if unit.get("yolo_vehicle") else 0.0
+    x[15] = 1.0 if insp.get("person") is True else 0.0
+    x[16] = 1.0 if insp.get("vehicle_present") is True else 0.0
+    x[17] = 1.0 if insp.get("distance") == "close" else 0.0
+    x[18] = 1.0 if insp.get("motion") == "moving" else 0.0
+    x[19] = 1.0 if kit_id == "warehouse-aisle" else 0.0
+    x[20] = 1.0 if kit_id == "person-near-vehicle" else 0.0
+    x[21] = 1.0 if "forklift-near-person" in hz else 0.0
+    x[22] = 1.0 if "pallet-in-walkway" in hz else 0.0
+    x[23] = 1.0 if "blocked-path" in hz else 0.0
     return x

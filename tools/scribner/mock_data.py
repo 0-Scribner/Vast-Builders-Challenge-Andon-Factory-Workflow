@@ -1,12 +1,7 @@
 """Forty synthetic Pack C units so the HITL loop runs without VSS.
 
-Captions **must** match ``inspection.parse_caption`` (PRESENT / MISSING /
-COMPLETE). Ground-truth ``true_incomplete`` is what a reviewer would say
-— used by ``scripts/simulate_reviews.py`` and tests, never by the scorer.
-
-Salient defects (person-vehicle gap, pallet in walkway, blocked lane)
-have clean COMPLETE: NO captions. Subtle defects (unclear distance) are
-labeled UNCLEAR / wrong COMPLETE: YES so the gate HOLDs them.
+Captions match ``inspection.parse_caption``. ``true_unsafe`` (and
+``true_incomplete`` alias) is oracle-only — never used by the scorer.
 """
 
 from __future__ import annotations
@@ -17,35 +12,45 @@ from inspection import parse_caption
 from kits import CAMERA_ID, LOCATION
 from llm import prior_for
 
-_COMPLETE = (
-    "PRESENT: a clear travel lane, person-vehicle separation, a pallet-free walkway, "
-    "an unobstructed aisle path. MISSING: NONE. UNCLEAR: NONE. COMPLETE: YES. "
-    "CONFIDENCE: HIGH. The aisle is open and no person is close to a moving vehicle."
+_CLEAR = (
+    "PERSON: NO. VEHICLE: NONE. MOTION: NONE. DISTANCE: NONE. "
+    "PATH_CLEAR: YES. NEAR_MISS: NO. HAZARD: NONE. UNCLEAR: NONE. "
+    "CONFIDENCE: HIGH. The aisle is empty and the travel lane is open."
 )
-_MISSING_GAP = (
-    "PRESENT: a pallet-free walkway, an unobstructed aisle path. "
-    "MISSING: person-vehicle separation, a clear travel lane. UNCLEAR: NONE. "
-    "COMPLETE: NO. CONFIDENCE: HIGH. A forklift is moving close to a person in the aisle."
+_FORKLIFT_ONLY = (
+    "PERSON: NO. VEHICLE: forklift. MOTION: MOVING. DISTANCE: NONE. "
+    "PATH_CLEAR: YES. NEAR_MISS: NO. HAZARD: NONE. UNCLEAR: NONE. "
+    "CONFIDENCE: HIGH. A forklift travels an empty aisle."
 )
-_MISSING_WALKWAY = (
-    "PRESENT: a clear travel lane, person-vehicle separation. "
-    "MISSING: a pallet-free walkway. UNCLEAR: NONE. COMPLETE: NO. CONFIDENCE: HIGH. "
-    "A pallet sits in the pedestrian walkway."
+_PERSON_FAR = (
+    "PERSON: YES. VEHICLE: forklift. MOTION: MOVING. DISTANCE: FAR. "
+    "PATH_CLEAR: YES. NEAR_MISS: NO. HAZARD: NONE. UNCLEAR: NONE. "
+    "CONFIDENCE: HIGH. A person stands well clear of a moving forklift."
 )
-_MISSING_LANE = (
-    "PRESENT: person-vehicle separation, a pallet-free walkway. "
-    "MISSING: a clear travel lane, an unobstructed aisle path. UNCLEAR: NONE. "
-    "COMPLETE: NO. CONFIDENCE: HIGH. Equipment blocks the travel lane."
+_NEAR_MISS = (
+    "PERSON: YES. VEHICLE: forklift. MOTION: MOVING. DISTANCE: CLOSE. "
+    "PATH_CLEAR: NO. NEAR_MISS: YES. HAZARD: forklift-near-person. UNCLEAR: NONE. "
+    "CONFIDENCE: HIGH. A forklift is moving close to a person in the aisle."
 )
-_HIDDEN_GAP = (
-    "PRESENT: a pallet-free walkway, an unobstructed aisle path. "
-    "MISSING: NONE. UNCLEAR: person-vehicle separation. COMPLETE: YES. "
+_PALLET = (
+    "PERSON: NO. VEHICLE: NONE. MOTION: NONE. DISTANCE: NONE. "
+    "PATH_CLEAR: NO. NEAR_MISS: NO. HAZARD: pallet-in-walkway. UNCLEAR: NONE. "
+    "CONFIDENCE: HIGH. A pallet sits in the pedestrian walkway."
+)
+_UNCLEAR = (
+    "PERSON: YES. VEHICLE: forklift. MOTION: MOVING. DISTANCE: UNCLEAR. "
+    "PATH_CLEAR: YES. NEAR_MISS: NO. HAZARD: NONE. UNCLEAR: DISTANCE. "
     "CONFIDENCE: LOW. Distance between the person and the forklift cannot be verified."
 )
-_VIEW_BLOCKED = (
-    "PRESENT: a clear travel lane. MISSING: NONE. "
-    "UNCLEAR: person-vehicle separation, a pallet-free walkway, an unobstructed aisle path. "
-    "COMPLETE: YES. CONFIDENCE: LOW. Glare and a rack hide most of the aisle."
+_BLOCKED = (
+    "PERSON: NO. VEHICLE: NONE. MOTION: NONE. DISTANCE: NONE. "
+    "PATH_CLEAR: YES. NEAR_MISS: NO. HAZARD: NONE. UNCLEAR: PATH_CLEAR. "
+    "CONFIDENCE: LOW. Glare and a rack hide most of the aisle."
+)
+_HIGHWAY = (
+    "PERSON: YES. VEHICLE: truck. MOTION: MOVING. DISTANCE: CLOSE. "
+    "PATH_CLEAR: NO. NEAR_MISS: YES. HAZARD: person-near-vehicle. UNCLEAR: NONE. "
+    "CONFIDENCE: HIGH. A person is close to a moving truck."
 )
 
 
@@ -57,18 +62,22 @@ def build_mock_units() -> List[Dict[str, Any]]:
         caption = spec["caption"]
         inspection = parse_caption(caption, kit_id=kit_id)
         unit: Dict[str, Any] = {
-            "id": f"packc-{i:03d}",
+            "id": f"wh-{i:03d}",
             "kit_id": kit_id,
             "filename": spec["filename"],
-            "camera_id": CAMERA_ID,
-            "location": LOCATION,
-            "tags": [f"kit:{kit_id}", f"unit:{i:03d}", spec["variant"], "corpus:provided"],
+            "camera_id": spec.get("camera_id", CAMERA_ID),
+            "location": spec.get("location", LOCATION),
+            "tags": [f"scene:{kit_id}", f"unit:{i:03d}", spec["variant"], "line:primary"],
             "caption": caption,
             "inspection": inspection,
             "source": spec["source"],
             "original_video": spec["original_video"],
             "occlusion": spec.get("occlusion", False),
-            "true_incomplete": spec["true_incomplete"],
+            "view_blocked": spec.get("view_blocked", False),
+            "yolo_person": spec.get("yolo_person", False),
+            "yolo_vehicle": spec.get("yolo_vehicle", False),
+            "true_unsafe": spec["true_unsafe"],
+            "true_incomplete": spec["true_unsafe"],
             "variant": spec["variant"],
             "mock": True,
         }
@@ -78,42 +87,58 @@ def build_mock_units() -> List[Dict[str, Any]]:
 
 
 def _specs() -> List[Dict[str, Any]]:
-    """12 complete + 20 salient incomplete + 8 subtle/unclear."""
     out: List[Dict[str, Any]] = []
 
     def add(
         kit_id: str,
         variant: str,
         caption: str,
-        true_incomplete: bool,
-        occlusion: bool = False,
+        true_unsafe: bool,
+        **extra: Any,
     ) -> None:
         n = len(out) + 1
-        out.append(
-            {
-                "kit_id": kit_id,
-                "variant": variant,
-                "caption": caption,
-                "true_incomplete": true_incomplete,
-                "occlusion": occlusion,
-                "filename": f"{kit_id}_{variant}_{n:03d}.mp4",
-                "source": f"s3://mock-segments/{kit_id}/{n:03d}.mp4",
-                "original_video": f"s3://mock-chunks/{kit_id}/{n:03d}.mp4",
-            }
-        )
+        row = {
+            "kit_id": kit_id,
+            "variant": variant,
+            "caption": caption,
+            "true_unsafe": true_unsafe,
+            "filename": f"{kit_id}_{variant}_{n:03d}.mp4",
+            "source": f"s3://mock-segments/{kit_id}/{n:03d}.mp4",
+            "original_video": f"s3://mock-chunks/{kit_id}/{n:03d}.mp4",
+        }
+        row.update(extra)
+        out.append(row)
 
-    for _ in range(12):
-        add("warehouse-aisle", "complete", _COMPLETE, False)
     for _ in range(8):
-        add("warehouse-aisle", "missing-person-gap", _MISSING_GAP, True)
-    for _ in range(5):
-        add("warehouse-aisle", "missing-walkway", _MISSING_WALKWAY, True)
+        add("warehouse-aisle", "empty-aisle", _CLEAR, False)
     for _ in range(4):
-        add("warehouse-aisle", "missing-travel-lane", _MISSING_LANE, True)
-    for _ in range(3):
-        add("warehouse-aisle", "missing-path", _MISSING_LANE, True)
+        add("warehouse-aisle", "forklift-only", _FORKLIFT_ONLY, False, yolo_vehicle=True)
+    for _ in range(4):
+        add("warehouse-aisle", "person-far", _PERSON_FAR, False, yolo_person=True, yolo_vehicle=True)
+    for _ in range(8):
+        add(
+            "warehouse-aisle",
+            "forklift-near-person",
+            _NEAR_MISS,
+            True,
+            yolo_person=True,
+            yolo_vehicle=True,
+        )
     for _ in range(5):
-        add("warehouse-aisle", "hidden-gap", _HIDDEN_GAP, True)
+        add("warehouse-aisle", "pallet-in-walkway", _PALLET, True)
+    for _ in range(5):
+        add("warehouse-aisle", "unclear-distance", _UNCLEAR, True, yolo_person=True, yolo_vehicle=True)
     for _ in range(3):
-        add("warehouse-aisle", "view-blocked", _VIEW_BLOCKED, True, occlusion=True)
+        add("warehouse-aisle", "view-blocked", _BLOCKED, True, view_blocked=True, occlusion=True)
+    for _ in range(3):
+        add(
+            "person-near-vehicle",
+            "highway-close",
+            _HIGHWAY,
+            True,
+            camera_id="i24_cam-1",
+            location="nashville",
+            yolo_person=True,
+            yolo_vehicle=True,
+        )
     return out

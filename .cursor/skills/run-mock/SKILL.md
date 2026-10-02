@@ -2,7 +2,7 @@
 name: run-mock
 description: >-
   Run Scribner locally in mock mode (no VSS, no credentials). Use when
-  verifying the kit-completeness gate, UI, tests, or a cold start before
+  verifying the warehouse near-miss gate, UI, tests, or a cold start before
   the workshop VM. Triggers on "run mock", "start scribner locally",
   "prove the loop", "run tests".
 ---
@@ -10,8 +10,9 @@ description: >-
 # Run Scribner in mock mode
 
 Do this **before** touching the live VSS stack. Mock mode loads 40 synthetic
-Pack C aisle units (complete, missing person-gap/walkway/lane, hidden-gap,
-view-blocked) and runs the same parser → prior → scorer → HOLD queue as live.
+Pack C aisle units (empty-aisle, forklift-near-person, pallet-in-walkway,
+unclear-distance, view-blocked, highway-close) and runs the same parser →
+prior → scorer → HOLD queue as live.
 
 ## Tests (must pass)
 
@@ -33,9 +34,10 @@ cd tools/scribner
 python3 main.py
 ```
 
-Open `http://127.0.0.1:8080`. Keyboard: `C` complete, `I` incomplete, `N` next.
+Open `http://127.0.0.1:8080`. Keyboard: `A`/`C` CLEAR, `O`/`U` UNSAFE, `N` next.
 
-Health check: `curl -s http://127.0.0.1:8080/health`
+Health check: `curl -s http://127.0.0.1:8080/health` — expect
+`"product":"warehouse-near-miss"` and `person close to a moving vehicle`.
 
 ## Headless review loop (optional)
 
@@ -44,7 +46,7 @@ PYTHONPATH=tools/scribner python3 scripts/simulate_reviews.py
 ```
 
 Expect coverage after oracle labels ≥ coverage at cold start, and
-`missing-person-gap` units with `p_fail ≥ 0.55`.
+`forklift-near-person` units with `p_fail ≥ 0.55`.
 
 ## Agent rules
 

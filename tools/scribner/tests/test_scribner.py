@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ["SCRIBNER_MOCK"] = "1"
 os.environ.setdefault("SCRIBNER_DATA_DIR", tempfile.mkdtemp(prefix="scribner-test-"))
 
+from gate import decide_one, pass_blocked  # noqa: E402
 from inspection import heuristic_prior, parse_caption  # noqa: E402
 from kits import CUSTOM_PROMPT_MAX, kit_for_camera, kit_ids, prompt_for_kit  # noqa: E402
 from learn import derive_thresholds, fit_logistic, predict_p_fail  # noqa: E402
@@ -31,76 +32,125 @@ class PromptLimitTests(unittest.TestCase):
         for kid in kit_ids():
             p = prompt_for_kit(kid)
             self.assertLessEqual(len(p), CUSTOM_PROMPT_MAX, kid)
-            self.assertIn("PRESENT:", p)
-            self.assertIn("MISSING:", p)
-            self.assertIn("COMPLETE:", p)
-        self.assertIn("warehouse-aisle", kit_ids())
+            self.assertIn("PATH_CLEAR:", p)
+            self.assertIn("NEAR_MISS:", p)
+            self.assertIn("PERSON:", p)
+            self.assertIn("VEHICLE:", p)
+        self.assertEqual(set(kit_ids()), {"warehouse-aisle", "person-near-vehicle"})
         self.assertIn("sdg_warehouse", prompt_for_kit("warehouse-aisle"))
+        self.assertIn("person close to a moving vehicle", prompt_for_kit("warehouse-aisle"))
         self.assertEqual(kit_for_camera("sdg_warehouse_cam-2"), "warehouse-aisle")
         self.assertEqual(kit_for_camera("i24_cam-1"), "person-near-vehicle")
-        self.assertEqual(kit_for_camera("kit-station-1"), "race-car")
+        self.assertEqual(kit_for_camera("kit-station-1"), "person-near-vehicle")
+        self.assertNotIn("race-car", kit_ids())
 
 
 class ParserTests(unittest.TestCase):
-    def test_complete_race_car(self) -> None:
+    def test_clear_empty_aisle(self) -> None:
         cap = (
-            "PRESENT: 4 black wheels, 1 clear windshield, 1 red roof, "
-            "2 yellow headlights, 1 minifigure with a hat, 1 blue door. "
-            "MISSING: NONE. UNCLEAR: NONE. COMPLETE: YES. CONFIDENCE: HIGH. "
-            "The car is fully assembled."
+            "PERSON: NO. VEHICLE: NONE. MOTION: NONE. DISTANCE: NONE. "
+            "PATH_CLEAR: YES. NEAR_MISS: NO. HAZARD: NONE. UNCLEAR: NONE. "
+            "CONFIDENCE: HIGH. The aisle is empty."
         )
-        rec = parse_caption(cap, kit_id="race-car")
+        rec = parse_caption(cap, kit_id="warehouse-aisle")
         self.assertTrue(rec["complete"])
+        self.assertTrue(rec["path_clear"])
+        self.assertFalse(rec["near_miss"])
         self.assertEqual(rec["confidence"], "high")
-        self.assertEqual(rec["missing"], [])
-        self.assertIn("wheels", rec["part_ids_present"])
+        self.assertEqual(rec["hazards"], [])
         prior = heuristic_prior(rec)
         self.assertLess(prior["p_fail_prior"], 0.2)
 
-    def test_missing_wheels(self) -> None:
+    def test_near_miss_forklift(self) -> None:
         cap = (
-            "PRESENT: 1 clear windshield, 1 red roof. "
-            "MISSING: 4 black wheels. UNCLEAR: NONE. COMPLETE: NO. CONFIDENCE: HIGH. "
-            "Chassis on paper, no wheels."
+            "PERSON: YES. VEHICLE: forklift. MOTION: MOVING. DISTANCE: CLOSE. "
+            "PATH_CLEAR: NO. NEAR_MISS: YES. HAZARD: forklift-near-person. "
+            "UNCLEAR: NONE. CONFIDENCE: HIGH. A forklift is moving close to a person."
         )
-        rec = parse_caption(cap, kit_id="race-car")
+        rec = parse_caption(cap, kit_id="warehouse-aisle")
         self.assertFalse(rec["complete"])
-        self.assertIn("wheels", rec["part_ids_missing"])
+        self.assertTrue(rec["near_miss"])
+        self.assertIn("forklift-near-person", rec["part_ids_missing"])
         prior = heuristic_prior(rec)
         self.assertGreater(prior["p_fail_prior"], 0.8)
 
     def test_unclear_holds(self) -> None:
         cap = (
-            "PRESENT: 4 black wheels. MISSING: NONE. UNCLEAR: 1 blue door. "
-            "COMPLETE: YES. CONFIDENCE: LOW. Far side not visible."
+            "PERSON: YES. VEHICLE: forklift. MOTION: MOVING. DISTANCE: UNCLEAR. "
+            "PATH_CLEAR: YES. NEAR_MISS: NO. HAZARD: NONE. UNCLEAR: DISTANCE. "
+            "CONFIDENCE: LOW. Distance cannot be verified."
         )
-        rec = parse_caption(cap, kit_id="race-car")
+        rec = parse_caption(cap, kit_id="warehouse-aisle")
         prior = heuristic_prior(rec)
         self.assertGreaterEqual(prior["p_fail_prior"], 0.4)
         self.assertLessEqual(prior["p_fail_prior"], 0.6)
 
-    def test_pack_c_complete_aisle(self) -> None:
+    def test_inconsistent_path_clear_and_near_miss(self) -> None:
         cap = (
-            "PRESENT: a clear travel lane, person-vehicle separation, "
-            "a pallet-free walkway, an unobstructed aisle path. "
-            "MISSING: NONE. UNCLEAR: NONE. COMPLETE: YES. CONFIDENCE: HIGH."
+            "PERSON: YES. VEHICLE: forklift. MOTION: MOVING. DISTANCE: CLOSE. "
+            "PATH_CLEAR: YES. NEAR_MISS: YES. HAZARD: NONE. UNCLEAR: NONE. "
+            "CONFIDENCE: HIGH. Conflicting fields."
         )
         rec = parse_caption(cap, kit_id="warehouse-aisle")
-        self.assertTrue(rec["complete"])
-        self.assertIn("person-gap", rec["part_ids_present"])
-        self.assertEqual(rec["missing"], [])
-        self.assertLess(heuristic_prior(rec)["p_fail_prior"], 0.2)
+        self.assertTrue(rec["inconsistent"])
+        self.assertFalse(rec["complete"])
+        self.assertGreater(heuristic_prior(rec)["p_fail_prior"], 0.8)
 
-    def test_pack_c_missing_person_gap(self) -> None:
+    def test_pallet_blocks_path(self) -> None:
         cap = (
-            "PRESENT: a pallet-free walkway. "
-            "MISSING: person-vehicle separation. UNCLEAR: NONE. "
-            "COMPLETE: NO. CONFIDENCE: HIGH. Forklift close to a person."
+            "PERSON: NO. VEHICLE: NONE. MOTION: NONE. DISTANCE: NONE. "
+            "PATH_CLEAR: NO. NEAR_MISS: NO. HAZARD: pallet-in-walkway. "
+            "UNCLEAR: NONE. CONFIDENCE: HIGH. A pallet sits in the walkway."
         )
         rec = parse_caption(cap, kit_id="warehouse-aisle")
         self.assertFalse(rec["complete"])
-        self.assertIn("person-gap", rec["part_ids_missing"])
+        self.assertIn("pallet-in-walkway", rec["part_ids_missing"])
         self.assertGreater(heuristic_prior(rec)["p_fail_prior"], 0.8)
+
+
+class GateFailClosedTests(unittest.TestCase):
+    def test_yolo_both_without_high_clear_never_auto_clear(self) -> None:
+        rec = {
+            "complete": None,
+            "confidence": "medium",
+            "path_clear": None,
+            "near_miss": None,
+            "missing": [],
+            "hazards": [],
+            "unclear": [],
+            "inconsistent": False,
+            "person": True,
+            "vehicle_present": True,
+        }
+        unit = {
+            "id": "yolo-only",
+            "kit_id": "warehouse-aisle",
+            "inspection": rec,
+            "prior": {"p_fail_prior": 0.01},
+            "yolo_person": True,
+            "yolo_vehicle": True,
+        }
+        self.assertTrue(pass_blocked(unit))
+        d = decide_one(unit, None, {"t_pass": 0.5, "t_fail": 0.9}, audit_fraction=0)
+        self.assertNotEqual(d["decision"], "AUTO_CLEAR")
+        self.assertNotEqual(d["decision"], "AUTO_PASS")
+
+    def test_inconsistent_never_auto_clear(self) -> None:
+        cap = (
+            "PERSON: YES. VEHICLE: forklift. MOTION: MOVING. DISTANCE: CLOSE. "
+            "PATH_CLEAR: YES. NEAR_MISS: YES. HAZARD: NONE. UNCLEAR: NONE. "
+            "CONFIDENCE: HIGH."
+        )
+        rec = parse_caption(cap, kit_id="warehouse-aisle")
+        unit = {
+            "id": "inc",
+            "kit_id": "warehouse-aisle",
+            "inspection": rec,
+            "prior": {"p_fail_prior": 0.01},
+        }
+        d = decide_one(unit, None, {"t_pass": 0.5, "t_fail": 0.9}, audit_fraction=0)
+        self.assertNotEqual(d["decision"], "AUTO_CLEAR")
+        self.assertEqual(d["decision"], "AUTO_ALERT")
 
 
 class LearningTests(unittest.TestCase):
@@ -118,14 +168,13 @@ class LearningTests(unittest.TestCase):
             labels.append(
                 {
                     "unit_id": u["id"],
-                    "verdict": "INCOMPLETE" if u["true_incomplete"] else "COMPLETE",
+                    "verdict": "UNSAFE" if u["true_unsafe"] else "CLEAR",
                     "overrode": False,
                 }
             )
         scorer = fit_logistic(units, labels)
-        # Salient incomplete should score high after fit.
-        missing = next(u for u in units if u["variant"] == "missing-person-gap")
-        complete = next(u for u in units if u["variant"] == "complete")
+        missing = next(u for u in units if u["variant"] == "forklift-near-person")
+        complete = next(u for u in units if u["variant"] == "empty-aisle")
         self.assertGreater(predict_p_fail(missing, scorer), 0.6)
         self.assertLess(predict_p_fail(complete, scorer), 0.4)
         thr = derive_thresholds(
@@ -147,34 +196,39 @@ class LoopTests(unittest.TestCase):
         self.assertGreaterEqual(scanned["n_units"], 30)
         gated = self.state.run_gate()
         cold = gated["metrics"]["coverage"]
-        # Review every unit with ground truth (oracle human).
         decisions = {d["unit_id"]: d for d in self.state.store.load_decisions()}
         for u in self.state.store.load_units():
-            verdict = "INCOMPLETE" if u["true_incomplete"] else "COMPLETE"
+            verdict = "UNSAFE" if u["true_unsafe"] else "CLEAR"
             auto = (decisions.get(u["id"]) or {}).get("decision") or "HOLD"
             kwargs: dict = {}
             reason = "agree"
-            if auto == "AUTO_PASS" and verdict == "INCOMPLETE":
-                reason = "vlm_missed_part"
-            elif auto == "AUTO_FAIL" and verdict == "COMPLETE":
-                reason = "vlm_false_missing"
+            if auto in {"AUTO_CLEAR", "AUTO_PASS"} and verdict == "UNSAFE":
+                reason = "vlm_missed_near_miss"
+            elif auto in {"AUTO_ALERT", "AUTO_FAIL"} and verdict == "CLEAR":
+                reason = "vlm_false_alert"
                 kwargs["confirm_escape"] = True
             self.state.review(u["id"], verdict, reason=reason, **kwargs)
         result = self.state.retrain()
         warm = result["metrics"]["coverage"]
         self.assertGreaterEqual(warm, cold)
-        # Salient missing wheels should now be AUTO_FAIL or at least high p.
         units = {u["id"]: u for u in self.state.store.load_units()}
         decisions = {d["unit_id"]: d for d in self.state.store.load_decisions()}
-        mw = next(u for u in units.values() if u["variant"] == "missing-person-gap")
+        mw = next(u for u in units.values() if u["variant"] == "forklift-near-person")
         self.assertGreaterEqual(decisions[mw["id"]]["p_fail"], 0.55)
-        self.assertIn(decisions[mw["id"]]["decision"], {"AUTO_FAIL", "HOLD"})
-        complete = next(u for u in units.values() if u["variant"] == "complete")
+        self.assertIn(decisions[mw["id"]]["decision"], {"AUTO_ALERT", "AUTO_FAIL", "HOLD"})
+        complete = next(u for u in units.values() if u["variant"] == "empty-aisle")
         self.assertLessEqual(decisions[complete["id"]]["p_fail"], 0.45)
-        # Subtle hidden-gap should not all be auto-passed (low confidence).
-        hidden = [u for u in units.values() if u["variant"] == "hidden-gap"]
+        hidden = [u for u in units.values() if u["variant"] == "unclear-distance"]
         hidden_dec = [decisions[u["id"]]["decision"] for u in hidden]
-        self.assertTrue(any(d != "AUTO_PASS" for d in hidden_dec))
+        self.assertTrue(any(d not in {"AUTO_CLEAR", "AUTO_PASS"} for d in hidden_dec))
+
+    def test_accept_object_aliases(self) -> None:
+        self.state.scan()
+        self.state.run_gate()
+        hold = next(d for d in self.state.store.load_decisions() if d["decision"] == "HOLD")
+        self.state.review(hold["unit_id"], "O", reason="agree")
+        lab = next(x for x in self.state.store.load_labels() if x["unit_id"] == hold["unit_id"])
+        self.assertEqual(lab["verdict"], "UNSAFE")
 
 
 if __name__ == "__main__":

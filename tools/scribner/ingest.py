@@ -1,4 +1,4 @@
-"""Poka-yoke for kit clip ingest against the official upload-video contract.
+"""Poka-yoke for scene clip ingest against the official upload-video contract.
 
 Uses only POST /api/v1/videos/upload fields from
 vast-builders-challenge ingest/upload-video. Rejects YouTube/http files,
@@ -16,7 +16,7 @@ from builders_stack import CUSTOM_PROMPT_MAX, UPLOAD_FIELDS
 from kits import kit_ids
 
 FILENAME_RE = re.compile(
-    r"^kit-(?P<kit_id>[a-z0-9-]+)_unit-(?P<n>\d{3})\.(?P<ext>mp4|mov|webm|mkv|avi)$",
+    r"^(?:kit|scene)-(?P<kit_id>[a-z0-9-]+)_unit-(?P<n>\d{3})\.(?P<ext>mp4|mov|webm|mkv|avi)$",
     re.IGNORECASE,
 )
 _URLISH = re.compile(r"^[a-z][a-z0-9+.-]*://", re.IGNORECASE)
@@ -42,7 +42,7 @@ def parse_kit_filename(name: str, known: Optional[Sequence[str]] = None) -> str:
     m = FILENAME_RE.match(Path(name).name)
     if not m:
         raise IngestRejected(
-            f"filename {name!r} must match kit-<kit_id>_unit-<nnn>.(mp4|mov|webm|mkv|avi)"
+            f"filename {name!r} must match kit-<scene_id>_unit-<nnn>.(mp4|mov|webm|mkv|avi)"
         )
     kit_id = m.group("kit_id")
     allowed: Set[str] = set(known if known is not None else kit_ids())
@@ -97,7 +97,7 @@ def filter_upload_fields(data: dict) -> dict:
 
 
 def tags_for(kit_id: str, unit: str, variant: str = "unknown") -> str:
-    return f"kit:{kit_id},unit:{unit},variant:{variant},scribner,corpus:provided"
+    return f"scene:{kit_id},kit:{kit_id},unit:{unit},variant:{variant},scribner,line:primary,corpus:provided"
 
 
 def iter_clip_files(folder: str, known: Optional[Iterable[str]] = None) -> list:

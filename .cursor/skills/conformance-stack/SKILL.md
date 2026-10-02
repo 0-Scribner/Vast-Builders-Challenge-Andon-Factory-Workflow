@@ -28,4 +28,4 @@ export BUILDERS_CHALLENGE_DIR="$DIR"
 
 4. Allowed resources are listed in `docs/BUILDERS_STACK.md`. Runtime checker: `tools/scribner/builders_stack.scan_scribner_violations()`.
 
-Do not add VSS routes, env vars, or GPU hosts that are not in that clone. Do not call Canary for kit QC.
+Do not add VSS routes, env vars, or GPU hosts that are not in that clone. Do not call Canary for the aisle gate.
