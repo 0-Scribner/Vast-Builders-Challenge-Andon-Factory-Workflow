@@ -4,8 +4,13 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-export KUBECONFIG="${KUBECONFIG:-/config/kubeconfig}"
-kubectl cluster-info >/dev/null
+if [[ -z "${KUBECONFIG:-}" ]]; then
+  # The workshop VM ships the kubeconfig under its canonical name or a team-prefixed alias.
+  for candidate in /config/kubeconfig /config/*-k8s.yaml; do
+    [[ -f "$candidate" ]] && { export KUBECONFIG="$candidate"; break; }
+  done
+fi
+[[ -n "${KUBECONFIG:-}" && -f "$KUBECONFIG" ]] || { echo "no kubeconfig under /config" >&2; exit 1; }
 
 mapfile -t TEAM_CONFIGS < <(find /config -maxdepth 1 -type f -name '*.config' | sort)
 (( ${#TEAM_CONFIGS[@]} == 1 )) || { echo "expected exactly one /config/*.config" >&2; exit 1; }
@@ -54,9 +59,11 @@ kubectl -n "$NS" create secret generic "${APP_NAME}-vss-creds" \
   --from-literal=COSMOS_EMBED1_MODEL="${COSMOS_EMBED1_MODEL:-nvidia/cosmos-embed1}" \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 
-# Persist review labels/model state across pod restarts. If no team-approved default
-# StorageClass exists, this must fail rather than silently reverting to /tmp.
-kubectl -n "$NS" apply -f - <<EOF >/dev/null
+# Review labels and the scorer live under /data. SCRIBNER_PVC=1 backs it with a 256Mi
+# PVC (needs a StorageClass the team namespace can use; the claim binds when the pod
+# schedules). Otherwise an emptyDir keeps them for the pod's lifetime.
+if [[ "${SCRIBNER_PVC:-0}" == "1" ]]; then
+  kubectl -n "$NS" apply -f - <<EOF >/dev/null
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -67,12 +74,12 @@ spec:
     requests:
       storage: 256Mi
 EOF
-for _ in $(seq 1 30); do
-  phase="$(kubectl -n "$NS" get pvc scribner-data -o jsonpath='{.status.phase}' 2>/dev/null || true)"
-  [[ "$phase" == "Bound" ]] && break
-  sleep 2
-done
-[[ "${phase:-}" == "Bound" ]] || { echo "scribner-data PVC is not Bound; resolve team storage before deploy" >&2; exit 1; }
+  DATA_VOLUME='persistentVolumeClaim: { claimName: scribner-data }'
+  echo "review state: PVC scribner-data"
+else
+  DATA_VOLUME='emptyDir: {}'
+  echo "review state: emptyDir, kept for the pod's lifetime (set SCRIBNER_PVC=1 for a PVC)"
+fi
 
 kubectl -n "$NS" apply -f - <<EOF >/dev/null
 apiVersion: apps/v1
@@ -140,7 +147,7 @@ spec:
       - name: static
         configMap: { name: ${APP_NAME}-static }
       - name: data
-        persistentVolumeClaim: { claimName: scribner-data }
+        ${DATA_VOLUME}
 ---
 apiVersion: v1
 kind: Service
@@ -170,7 +177,8 @@ EOF
 
 kubectl -n "$NS" rollout restart deploy/"$APP_NAME" >/dev/null
 kubectl -n "$NS" rollout status deploy/"$APP_NAME" --timeout=180s
-curl --fail --silent --show-error "$APP_URL" >/dev/null
+# The Ingress can take a few seconds to route a new backend.
+curl --fail --silent --show-error --retry 10 --retry-delay 3 --retry-all-errors "$APP_URL" >/dev/null
 curl --fail --silent --show-error "$APP_URL/" >/dev/null
 curl --fail --silent --show-error "$APP_URL/health" >/tmp/scribner-deploy-health.json
 curl --fail --silent --show-error "$APP_URL/api/andon" >/tmp/scribner-deploy-andon.json

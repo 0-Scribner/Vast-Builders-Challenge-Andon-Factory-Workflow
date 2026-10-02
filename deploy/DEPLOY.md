@@ -249,12 +249,12 @@ the live gate. Scene id is inferred from `camera_id` (Pack C  to
 `warehouse-aisle`).
 
 
-## Persistent review state
+## Review state
 
-The deployment uses a team-scoped PVC named `scribner-data` mounted at `/data`, with
-`SCRIBNER_DATA_DIR=/data/scribner`. If the PVC cannot bind, stop and resolve the
-team-approved StorageClass; do not silently fall back to `/tmp` and claim review state
-survives restarts. The workshop deploy helper verifies the claim before rollout.
+`SCRIBNER_DATA_DIR=/data/scribner`. By default `workshop/07_deploy_scribner.sh` mounts an
+emptyDir at `/data`, so labels and the scorer last for the pod's lifetime and reset on a
+restart. With `SCRIBNER_PVC=1` it mounts a 256Mi PVC named `scribner-data` instead, which
+keeps them across restarts when the team namespace has a usable StorageClass.
 
 All browser traffic must remain under `/app`; the frontend derives API/clip URLs from
 the served page path and reports non-2xx responses without advancing the review item.

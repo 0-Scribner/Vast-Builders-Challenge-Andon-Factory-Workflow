@@ -77,9 +77,9 @@ Requires Cosmos Reason health + nonempty inference, YOLO health + direct inferen
 bash workshop/07_deploy_scribner.sh
 ```
 
-No Docker. Uses `python:3.12-slim`, separate code/static ConfigMaps, includes `builders_stack_lock.json`, uses a Secret for VSS/W&B/GPU settings, creates a 256Mi PVC `scribner-data` mounted at `/data`, sets live Pack C explicitly, and deploys only under the existing team host `/app`.
+No Docker. Uses `python:3.12-slim`, separate code/static ConfigMaps, includes `builders_stack_lock.json`, uses a Secret for VSS/W&B/GPU settings, mounts an emptyDir at `/data` (or a 256Mi PVC `scribner-data` with `SCRIBNER_PVC=1`), sets live Pack C explicitly, and deploys only under the existing team host `/app`.
 
-If the PVC cannot bind, stop and resolve the team-approved StorageClass. Do not fall back to `/tmp` and claim persistence.
+With the default emptyDir, review labels reset when the pod restarts.
 
 Then rerun deliverable 5 against the printed event URL. Restart the deployment once and verify review/model state behaves as claimed. Inspect browser network requests: all Scribner requests must remain under `/app`.
 
