@@ -107,12 +107,3 @@ Status: rows that touch VAST, the GPUs or W&B need the workshop VM and the team 
 6. Name Pack C + the stack. Open the shift report.
 
 Full judge script: [docs/DEMO.md](docs/DEMO.md).
-
-## Constraints we will not violate
-
-- Cosmos captions are plain prose (JSON is stripped). Parser expects `PERSON:` / `VEHICLE:` / `MOTION:` / `DISTANCE:` / `PATH_CLEAR:` / `NEAR_MISS:` / `HAZARD:` / `UNCLEAR:` / `CONFIDENCE:`.
-- Custom prompt of 800 characters or fewer (`GET /api/v1/metadata/ingest-config`).
-- ConfigMap under 1 MiB, no JS build, no sklearn.
-- Ingress path `/app` only (`deployment/deploy-app-no-registry`).
-- Only the official stack: [docs/BUILDERS_STACK.md](docs/BUILDERS_STACK.md). Run `./scripts/run_adversarial.sh`.
-- False CLEAR is illegal. No AUTO_CLEAR on inconsistent captions, NEAR_MISS, named hazards, LOW confidence, UNCLEAR fields, view blocked, or YOLO person+vehicle without a HIGH PATH_CLEAR caption.
