@@ -9,8 +9,10 @@ and every payload carries "mock": true.
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from typing import Any, Callable, Dict, List, Optional
+from urllib.parse import urlsplit
 
 import requests
 from fastapi import APIRouter, HTTPException, Query
@@ -24,6 +26,7 @@ log = logging.getLogger("scribner.stack_tools")
 
 DASHBOARD_SCOPES = ("all", "mine", "public")
 LOGIN_PATH = "/api/v1/auth/login"
+_URL_RE = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://[^\s'\"<>]+")
 
 MOCK_FIELDS: Dict[str, Dict[str, Any]] = {
     "location": {"label": "Location", "options": [LOCATION]},
@@ -54,33 +57,84 @@ def _vss() -> VssClient:
         return _client
 
 
-def failure_reason(route: str, exc: BaseException) -> str:
-    """Browser-safe text: never the host, token, password or response body."""
+def _url_parts(url: str) -> List[str]:
+    try:
+        parts = urlsplit(url)
+        return [p for p in (parts.netloc, parts.hostname, parts.password) if p]
+    except ValueError:
+        return [url.split("://", 1)[-1].split("/", 1)[0]]
+
+
+def _secrets(client: Any) -> List[str]:
+    """VSS base URL, host, password and JWT from config and the live client."""
+    raw = [config.VSS_URL, config.VSS_PASSWORD]
+    if client is not None:
+        raw += [getattr(client, name, "") for name in ("base", "password", "_token")]
+    found = set()
+    for value in raw:
+        value = str(value or "")
+        if not value:
+            continue
+        found.add(value)
+        if "://" in value:
+            found.update(_url_parts(value))
+    return sorted(found, key=len, reverse=True)
+
+
+def _redact(text: str, client: Any = None) -> str:
+    text = _URL_RE.sub("<url>", text)
+    for value in _secrets(client):
+        text = re.sub(re.escape(value), "<redacted>", text, flags=re.IGNORECASE)
+    return text
+
+
+def _is_login(resp: Any) -> bool:
+    return str(getattr(resp, "url", "") or "").split("?")[0].endswith(LOGIN_PATH)
+
+
+def _route_status(exc: BaseException) -> Optional[int]:
+    """HTTP status of the failed route call; None for login and non-HTTP failures."""
+    if not isinstance(exc, requests.HTTPError) or exc.response is None:
+        return None
+    if _is_login(exc.response):
+        return None
+    return exc.response.status_code
+
+
+def failure_reason(route: str, exc: BaseException, client: Any = None) -> str:
+    """Browser-safe text: never a URL, the host, token, password or response body."""
     if isinstance(exc, VssError):
-        return f"VSS {route} failed: {exc}"
-    if isinstance(exc, requests.HTTPError):
+        reason = f"VSS {route} failed: {str(exc) or type(exc).__name__}"
+    elif isinstance(exc, requests.HTTPError):
         resp = exc.response
         status = resp.status_code if resp is not None else "unknown"
-        url = str(getattr(resp, "url", "") or "").split("?")[0]
-        if url.endswith(LOGIN_PATH):
-            return f"VSS login failed: HTTP {status}"
-        return f"VSS {route} failed: HTTP {status}"
-    if isinstance(exc, requests.Timeout):
-        return f"VSS {route} timed out"
-    if isinstance(exc, requests.ConnectionError):
-        return f"VSS {route} connection failed"
-    if isinstance(exc, requests.JSONDecodeError):
-        return f"VSS {route} returned invalid JSON"
-    return f"VSS {route} failed: {type(exc).__name__}"
+        if resp is not None and _is_login(resp):
+            reason = f"VSS login failed: HTTP {status}"
+        else:
+            reason = f"VSS {route} failed: HTTP {status}"
+    elif isinstance(exc, requests.Timeout):
+        reason = f"VSS {route} timed out"
+    elif isinstance(exc, requests.ConnectionError):
+        reason = f"VSS {route} connection failed"
+    elif isinstance(exc, requests.JSONDecodeError):
+        reason = f"VSS {route} returned invalid JSON"
+    else:
+        reason = f"VSS {route} failed: {type(exc).__name__}"
+    return _redact(reason, client)
 
 
-def _live(route: str, call: Callable[[VssClient], Any]) -> Any:
+def _live(route: str, call: Callable[[VssClient], Any], rejected: str = "") -> Any:
+    """Run one VSS call. ``rejected`` is the reason returned when VSS answers 400."""
+    client: Optional[VssClient] = None
     try:
-        return call(_vss())
+        client = _vss()
+        return call(client)
     except Exception as exc:
-        reason = failure_reason(route, exc)
+        status, reason = 503, failure_reason(route, exc, client)
+        if rejected and _route_status(exc) == 400:
+            status, reason = 400, _redact(rejected, client)
         log.warning("%s", reason)
-        raise HTTPException(503, reason) from exc
+        raise HTTPException(status, reason) from exc
 
 
 def _mock_stats(units: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -152,9 +206,11 @@ def build_router(state: Any) -> APIRouter:
         if config.MOCK:
             return {"mock": True, "field": field or None, "data": _mock_metadata(field, prefix, limit)}
         if field:
+            # retrieval/list-metadata: non-filterable fields get HTTP 400 from VSS.
             data = _live(
                 "/api/v1/metadata/values",
                 lambda c: c.metadata_values(field, prefix=prefix, limit=limit),
+                rejected=f"field {field!r} is not filterable on VSS: HTTP 400",
             )
         else:
             data = _live("/api/v1/metadata/schema", lambda c: c.metadata_schema())

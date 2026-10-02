@@ -111,7 +111,10 @@ class VssClient:
     def metadata_schema(self) -> Dict[str, Any]:
         r = self._get("/api/v1/metadata/schema")
         r.raise_for_status()
-        return r.json()
+        payload = r.json()
+        if not isinstance(payload, dict):
+            raise VssError("metadata/schema response is not an object")
+        return payload
 
     def metadata_values(self, field: str, prefix: str = "", limit: int = 50) -> Dict[str, Any]:
         params: Dict[str, Any] = {"field": field, "limit": limit}
@@ -119,7 +122,10 @@ class VssClient:
             params["prefix"] = prefix
         r = self._get("/api/v1/metadata/values", params=params)
         r.raise_for_status()
-        return r.json()
+        payload = r.json()
+        if not isinstance(payload, dict):
+            raise VssError("metadata/values response is not an object")
+        return payload
 
     def explore(self, scope: str = "all", limit: int = 100, offset: int = 0) -> Dict[str, Any]:
         r = self._get(
@@ -300,10 +306,13 @@ class VssClient:
         r.raise_for_status()
         return r.json()
 
-    def dashboard(self, scope: str = "mine") -> Dict[str, Any]:
+    def dashboard(self, scope: str = "all") -> Dict[str, Any]:
         r = self._get("/api/v1/dashboard/stats", params={"scope": scope})
         r.raise_for_status()
-        return r.json()
+        payload = r.json()
+        if not isinstance(payload, dict):
+            raise VssError("dashboard/stats response is not an object")
+        return payload
 
     def stream_bytes(self, source: str) -> bytes:
         token = self.login()

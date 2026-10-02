@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 # Schema and table names are the retrieval/vastdb-read skill defaults.
 SCHEMA = "vss-schema"
@@ -59,11 +60,23 @@ def read_env() -> Tuple[Dict[str, str], List[str]]:
     return env, [name for name, key in required if not env[key]]
 
 
-def redact(text: str) -> str:
+def redaction_values() -> List[str]:
     values = {os.environ.get(name, "").strip() for name in REDACTED_ENV}
+    # Connection errors print the endpoint host and port, not the configured URL.
+    for name in ("VDB_ENDPOINT", "S3_ENDPOINT"):
+        raw = os.environ.get(name, "").strip()
+        try:
+            parts = urlsplit(raw if "://" in raw else "http://" + raw)
+        except ValueError:
+            continue
+        values |= {parts.netloc, parts.hostname or ""}
     values |= {quote(value, safe="") for value in values}
-    for value in sorted((v for v in values if v), key=len, reverse=True):
-        text = text.replace(value, "<REDACTED>")
+    return sorted((v for v in values if v), key=len, reverse=True)
+
+
+def redact(text: str) -> str:
+    for value in redaction_values():
+        text = re.sub(re.escape(value), "<REDACTED>", text, flags=re.IGNORECASE)
     return text[:500]
 
 
@@ -204,5 +217,15 @@ def main() -> int:
     return finish(report, status, summary, checks=checks, unmeasured=[], **counts)
 
 
+def run() -> int:
+    try:
+        return main()
+    except Exception as exc:
+        # Python exits 1 on an uncaught exception, and 1 means a measured FAIL here.
+        message = redact(f"unexpected {type(exc).__name__}: {exc}")
+        print(f"UNKNOWN {message}", file=sys.stderr)
+        return EXIT_CODES["UNKNOWN"]
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run())

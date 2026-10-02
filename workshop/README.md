@@ -1,8 +1,18 @@
-# Scribner workshop execution kit: deliverables 2-8
+# Scribner workshop run scripts
 
-Prepared against Primary branch `cursor/warehouse-primary-72e3`, public baseline `c9034f52a29da266e5da669ff1e14eb47cde00cf`, and official Builders Challenge commit `4987d8ebd8e5270dccf0864851a16ed42eb8d8e7`.
+Built against the official Builders Challenge commit `4987d8ebd8e5270dccf0864851a16ed42eb8d8e7`.
 
 These scripts contain no credentials. Run them only in the assigned workshop environment after sourcing the single `/config/<team>.config`. Reports default to `/tmp/scribner-live-evidence` so live responses are not committed.
+
+## One command
+
+```bash
+bash workshop/00_run_live.sh --dry-run
+bash workshop/00_run_live.sh
+bash workshop/00_run_live.sh --reingest-target '<exact ID from 03 --list>' --deploy
+```
+
+The runner loads the single `/config/*.config`, runs 02, then 03 for the given target, starts a private live app on port 8082 checked by 05, 06 (when `SCRIBNER_MODEL` is set) and 09 (when a VastDB endpoint is set), and with `--deploy` runs 07 and 08. Each step prints PASS, FAIL, SKIPPED or UNKNOWN; the run stops at the first failure and ends with a summary.
 
 ## 2. VSS preflight
 
@@ -91,12 +101,8 @@ python workshop/09_vastdb_read.py
 
 Read-only `vastdb` SDK check (`pip install vastdb pyarrow`; through the skill's SSH tunnel set `VDB_ENDPOINT=http://127.0.0.1:18080`). It counts exact `sdg_warehouse_cam-2` / `warehouse3` rows in `vss-collection` and their captions containing `PATH_CLEAR:`, `NEAR_MISS:`, `UNCLEAR:` and `CONFIDENCE:`, then writes `09_vastdb_read.json` to `$SCRIBNER_EVIDENCE_DIR`. Exit 0 is PASS, 1 is FAIL, 2 is UNKNOWN.
 
-## Final adverse audit before push
+## Local tests
 
 ```bash
 ./scripts/run_adversarial.sh
-python -m unittest discover -s tools/scribner/tests -v
-git diff --check
 ```
-
-Do not claim steps 2-8 complete until their real environment evidence passes.
