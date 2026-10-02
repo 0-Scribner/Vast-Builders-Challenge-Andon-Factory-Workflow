@@ -253,11 +253,13 @@ class HttpAdversarialTests(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertIn("video/mp4", r.headers.get("content-type", ""))
         self.assertGreater(len(r.content), 1000)
-        tmp = Path(tempfile.mkstemp(suffix=".mp4")[1])
+        fd, name = tempfile.mkstemp(suffix=".mp4")
+        os.close(fd)
+        tmp = Path(name)
         tmp.write_bytes(r.content)
         red, green, blue = _rgb_mean(tmp)
         tmp.unlink(missing_ok=True)
-        # Packed red aisle: R leads. A grey rectangle is R≈G≈B.
+        # Packed red aisle: R leads. A grey rectangle has R, G and B about equal.
         self.assertGreater(red, green + 4)
         self.assertGreater(red, blue + 4)
         self.assertGreater(max(abs(red - green), abs(green - blue), abs(red - blue)), 8)

@@ -17,15 +17,16 @@ spec.loader.exec_module(checks)
 
 class HandoffChecksTest(unittest.TestCase):
     def test_handoff_shell_python_and_section_contracts(self):
-        doc = (ROOT / ".cursor/handoffs/josh-cowork.md").read_text()
+        doc = (ROOT / ".cursor/handoffs/josh-cowork.md").read_text(encoding="utf-8")
         self.assertEqual(re.findall(r"^## (.+)$", doc, re.M), [
             "Receiver", "Done when", "Context", "Never", "Inputs", "Procedure",
             "Verification", "Report back", "Stop and escalate"])
         context = doc.split("## Context\n", 1)[1].split("## Never", 1)[0]
         self.assertLessEqual(len([s for s in context.splitlines() if s.strip()]), 8)
         for block in re.findall(r"```bash\n(.*?)\n```", doc, re.S):
-            result = subprocess.run(["bash", "-n"], input=block, text=True, capture_output=True)
-            self.assertEqual(result.returncode, 0, result.stderr)
+            # Bytes keep LF line endings; text mode writes CRLF on Windows.
+            result = subprocess.run(["bash", "-n"], input=block.encode("utf-8"), capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8", "replace"))
             for python in re.findall(r"python - <<'PY'\n(.*?)\nPY", block, re.S):
                 compile(python, "handoff snippet", "exec")
 

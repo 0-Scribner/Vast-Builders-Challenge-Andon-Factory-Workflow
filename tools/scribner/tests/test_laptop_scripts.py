@@ -26,7 +26,8 @@ class PushBothTests(unittest.TestCase):
         for name in ("origin", "github"):
             remote = self.root / (name + ".git")
             subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True)
-            self.git("remote", "add", name, str(remote))
+            # Relative paths resolve the same way for native and MSYS git on Windows.
+            self.git("remote", "add", name, "../" + remote.name)
 
     def git(self, *args):
         return subprocess.check_output(["git", *args], cwd=self.repo, stderr=subprocess.PIPE, text=True).strip()
@@ -46,7 +47,7 @@ class PushBothTests(unittest.TestCase):
         for name in ("random.mp4", "corpus.zip", ".env", "team.config"):
             with self.subTest(name=name):
                 (self.repo / name).write_text("disposable test fixture\n")
-                self.git("add", name)
+                self.git("add", "-f", name)
                 result = self.push()
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("push_both: refuse", result.stderr)
@@ -56,7 +57,7 @@ class PushBothTests(unittest.TestCase):
                 (self.repo / name).unlink()
 
     def test_failed_origin_is_reported_even_if_github_succeeds(self):
-        self.git("remote", "set-url", "origin", str(self.root / "missing.git"))
+        self.git("remote", "set-url", "origin", "../missing.git")
         result = self.push()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("origin push failed", result.stderr)
