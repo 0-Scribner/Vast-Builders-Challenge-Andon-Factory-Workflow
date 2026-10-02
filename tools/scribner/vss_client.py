@@ -19,6 +19,9 @@ import config
 from builders_stack import CUSTOM_PROMPT_MAX
 from ingest import IngestRejected, assert_uploadable, filter_upload_fields
 
+# Fields that mark an Explore entry as an indexed parent video.
+_EXPLORE_ITEM_FIELDS = ("original_video", "timeline", "filename", "camera_id", "stream_id")
+
 
 class VssError(RuntimeError):
     pass
@@ -142,7 +145,16 @@ class VssClient:
     def _explore_batch(page: Dict[str, Any]) -> tuple[List[Dict[str, Any]], Optional[int]]:
         keys = [k for k in ("items", "results", "videos") if k in page]
         if not keys:
-            raise VssError("Explore response has no items/results/videos collection")
+            # The skill does not document the collection key; accept exactly one
+            # list of video objects and report the key names otherwise.
+            lists = [k for k, v in page.items() if isinstance(v, list) and all(isinstance(x, dict) for x in v)]
+            marked = [k for k in lists if page[k] and any(f in page[k][0] for f in _EXPLORE_ITEM_FIELDS)]
+            keys = marked if len(marked) == 1 else lists
+            if len(keys) != 1:
+                raise VssError(
+                    "Explore response has no single video collection; keys: "
+                    + ", ".join(sorted(str(k) for k in page))
+                )
         raw = page.get(keys[0])
         if not isinstance(raw, list) or any(not isinstance(x, dict) for x in raw):
             raise VssError("Explore collection is malformed")
