@@ -83,6 +83,7 @@ class ApiPokaYokeTests(unittest.TestCase):
         self.assertIn("自働化", html)
         self.assertIn("ポカヨケ", html)
         self.assertIn("/api/andon?unit_id=", html)
+        self.assertIn("position: sticky", html)
         self.assertNotIn("review('COMPLETE')", html)
         self.assertNotIn("Incomplete", html)
 
@@ -118,3 +119,5 @@ class ApiPokaYokeTests(unittest.TestCase):
         self.assertIn("安灯", text)
         self.assertIn("現場", text)
         self.assertIn("sdg_warehouse_cam-2", text)
+        board = main.api_andon()
+        self.assertIn(board["line_ja"], text)

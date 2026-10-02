@@ -25,6 +25,7 @@
       display: flex; align-items: center; gap: 16px;
       padding: 10px 20px; border-bottom: 1px solid var(--line);
       background: #0a0e12;
+      position: sticky; top: 0; z-index: 6;
     }
     header h1 { font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase; margin: 0; }
     header .ja { color: var(--hold); letter-spacing: 0.2em; font-size: 12px; }
@@ -41,6 +42,7 @@
       margin: 10px 20px 0; padding: 12px 14px;
       background: #0d1116; border: 1px solid #3a2a12; border-radius: 10px;
       display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center;
+      position: sticky; top: 52px; z-index: 5;
     }
     .andon .brand { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--hold); }
     .andon .brand b { display: block; font-size: 22px; letter-spacing: 0.28em; color: #f3e6c0; font-weight: 600; }

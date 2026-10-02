@@ -10,6 +10,7 @@ from collections import Counter
 from typing import Any, Dict, List
 
 from andon import snapshot as andon_snapshot
+from gate import review_queue
 from kits import CAMERA_ID, LOCATION, PAYOFF_QUERY, PRODUCT, STACK_LINE
 
 
@@ -39,11 +40,7 @@ def render_markdown(
     variants = Counter((u.get("variant") or "live") for u in failed)
     board = andon_snapshot(
         decisions=decisions,
-        queue=[
-            {**by_id[d.get("unit_id")], "decision_row": d}
-            for d in decisions
-            if d.get("decision") == "HOLD" and d.get("unit_id") in by_id
-        ],
+        queue=review_queue(units, decisions, labels),
         camera_id=CAMERA_ID,
         location=LOCATION,
     )
