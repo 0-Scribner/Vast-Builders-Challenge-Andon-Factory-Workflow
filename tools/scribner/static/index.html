@@ -43,7 +43,7 @@
     .layout { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 12px; padding: 0 20px 12px; min-height: 0; }
     .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
     .card h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-    video { width: 100%; background: #000; border-radius: 8px; max-height: 260px; }
+    video { width: 100%; background: #000; border-radius: 8px; max-height: 180px; }
     .meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
     .chip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
     .chip.HOLD, .chip.hold { background: #3d3410; color: var(--hold); }
@@ -53,8 +53,8 @@
       background: #2a1214; border: 1px solid var(--redline); color: #f0b8b8;
       border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 10px;
     }
-    .caption { font-size: 13px; color: #c9d6e4; background: var(--panel-2); padding: 10px; border-radius: 8px; max-height: 120px; overflow: auto; }
-    .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+    .caption { font-size: 13px; color: #c9d6e4; background: var(--panel-2); padding: 10px; border-radius: 8px; max-height: 72px; overflow: auto; }
+    .actions { display: flex; gap: 8px; margin: 10px 0 8px; flex-wrap: wrap; align-items: center; }
     .hint { color: var(--muted); font-size: 12px; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
@@ -68,8 +68,9 @@
     #reportView { padding: 0 20px 20px; }
     footer.stack {
       display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-      padding: 8px 20px 14px; color: var(--muted); font-size: 11px; letter-spacing: 0.04em;
+      padding: 8px 20px; color: var(--muted); font-size: 11px; letter-spacing: 0.04em;
       border-top: 1px solid var(--line);
+      position: sticky; bottom: 0; background: var(--bg);
     }
     .schema { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
   </style>
@@ -97,14 +98,14 @@
       <h2>Current unit <span id="unitTitle"></span></h2>
       <video id="player" controls autoplay muted loop playsinline></video>
       <div class="schema" id="schema"></div>
-      <div class="meta" id="unitMeta"></div>
-      <p class="caption" id="caption"></p>
       <div class="actions">
         <button class="pass" onclick="review('CLEAR')">CLEAR  (A / C)</button>
         <button class="fail" onclick="review('UNSAFE')">UNSAFE  (O / U)</button>
         <select id="reason"></select>
         <span class="hint">A accept · O object · N next. Override AUTO_ALERT→CLEAR needs confirm.</span>
       </div>
+      <div class="meta" id="unitMeta"></div>
+      <p class="caption" id="caption"></p>
     </div>
     <div class="card">
       <h2>HOLD / audit queue</h2>
