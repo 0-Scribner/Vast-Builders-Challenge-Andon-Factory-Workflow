@@ -40,7 +40,7 @@ Do not rebuild DataEngine. Do not Docker. Do not demo localhost.
 
 | Path | Role |
 |------|------|
-| `AGENTS.md` | Operating manual for Cursor / Josh |
+| `AGENTS.md` | Operating manual for Cursor / Bryce |
 | `tools/scribner/` | App (flat imports — this dir is the ConfigMap) |
 | `tools/scribner/kits.py` | Bills of materials (source of truth) |
 | `prompts/kit_completeness_v1.txt` | Generated ingest prompts (≤800 chars) |

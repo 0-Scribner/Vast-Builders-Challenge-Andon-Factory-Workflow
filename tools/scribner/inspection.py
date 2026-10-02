@@ -5,7 +5,7 @@ fields PRESENT, MISSING, UNCLEAR, COMPLETE, CONFIDENCE in that order.
 The VSS reasoner may prefix/suffix extra prose and will truncate at
 ~1024 characters. This parser is deliberately greedy and case-insensitive.
 
-Agent note: if Josh changes the prompt field names, update
+Agent note: if Bryce changes the prompt field names, update
 ``_FIELD_ORDER`` and ``tools/scribner/tests/test_inspection.py`` together.
 """
 

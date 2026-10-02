@@ -19,4 +19,4 @@ False PASS (incomplete kit marked complete / AUTO_PASS) is the red-line failure.
 
 Before you commit: run attacks that should fail closed (false PASS, illegal operator POST, bad filename, 801-char prompt, YouTube path). Record them in `.cursor/adversarial/` with Attack / Expected / Result / Fix. If an attack succeeds, fix it before any other work. Happy-path tests alone are not enough.
 
-Do not ask Josh to invent these attacks; use the list in `.cursor/handoffs/chatgpt-cowork.md` and extend it when you add a surface.
+Do not ask Bryce to invent these attacks; use the list in `.cursor/handoffs/chatgpt-cowork.md` and extend it when you add a surface.

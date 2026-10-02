@@ -1,10 +1,10 @@
 # Handoff: ingest LEGO kit clips into team VSS
 
-Give this file to the workshop-VM Cursor agent. It uploads Josh's kit footage so Scribner can scan it. Clips never go in git.
+Give this file to the workshop-VM Cursor agent. It uploads Bryce's kit footage so Scribner can scan it. Clips never go in git.
 
 ## Receiver
 
-Workshop VM Cursor agent. CWD = this Scribner repo (`AGENTS.md` at root). All commands run in the **browser VM terminal**, not Josh's laptop. Skills from the VAST challenge repo may also be present at `~/vast-builders-challenge`; prefer this repo's `tools/scribner` for prompts and the challenge `ingest/upload-video` skill for the HTTP shape.
+Workshop VM Cursor agent. CWD = this Scribner repo (`AGENTS.md` at root). All commands run in the **browser VM terminal**, not Bryce's laptop. Skills from the VAST challenge repo may also be present at `~/vast-builders-challenge`; prefer this repo's `tools/scribner` for prompts and the challenge `ingest/upload-video` skill for the HTTP shape.
 
 ## Done when
 
@@ -12,7 +12,7 @@ Workshop VM Cursor agent. CWD = this Scribner repo (`AGENTS.md` at root). All co
 - [ ] Each prompt used is ≤800 characters.
 - [ ] Explore (`GET /api/v1/videos/explore?scope=mine`) lists those filenames as fully indexed parents (usually 1 segment).
 - [ ] At least one indexed caption contains the literals `PRESENT:` and `COMPLETE:`.
-- [ ] A filled Report back block is shown to Josh.
+- [ ] A filled Report back block is shown to Bryce.
 - Out of scope: running the Scribner gate, reviewing units, retraining, deploying `/app`, committing video files.
 
 ## Context
@@ -40,7 +40,7 @@ Scribner parses Cosmos captions with `tools/scribner/inspection.py`. That parser
 | BOM prompts | `from tools.scribner.kits import prompt_for_kit` | yes |
 | Live size limit | `GET $BACKEND/api/v1/config` → `app.max_upload_size_mb` (often 25) | yes |
 
-If clips are still on the laptop: tell Josh to put a zip on Drive and `curl -L -o /tmp/kits.zip '<url>' && mkdir -p ~/kit-clips && unzip -o /tmp/kits.zip -d ~/kit-clips`. Do not wait on a second channel if the dir already has mp4s.
+If clips are still on the laptop: tell Bryce to put a zip on Drive and `curl -L -o /tmp/kits.zip '<url>' && mkdir -p ~/kit-clips && unzip -o /tmp/kits.zip -d ~/kit-clips`. Do not wait on a second channel if the dir already has mp4s.
 
 ## Procedure
 
@@ -133,7 +133,7 @@ A parent is ready when its timeline covers segments `1..total_segments` (kit cli
 
 6. **Spot-check captions.** Pick one complete-looking clip and one missing-part clip. `GET /api/v1/videos/metadata?source=<preview_source>`. `reasoning_content` must contain `PRESENT:` and `COMPLETE:`. If it is generic prose with no those labels, **do not re-upload the whole set**. Use `ingest/reingest-chunk` on that one `original_video` with the same `custom_prompt`, `chunk_count: 1`.
 
-7. **Stop.** Tell Josh the units are ready for Scribner scan (`scan_live` / the app). Do not start reviewing.
+7. **Stop.** Tell Bryce the units are ready for Scribner scan (`scan_live` / the app). Do not start reviewing.
 
 ## Verification
 

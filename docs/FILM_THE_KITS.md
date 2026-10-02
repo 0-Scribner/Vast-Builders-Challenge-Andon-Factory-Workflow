@@ -1,6 +1,6 @@
 # How to film the kits
 
-Agent note: give this to Josh before they pick up a phone. Bad footage
+Agent note: give this to Bryce before they pick up a phone. Bad footage
 cannot be rescued by a better prompt.
 
 ## Kits

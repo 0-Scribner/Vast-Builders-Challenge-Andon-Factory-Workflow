@@ -1,8 +1,8 @@
 # Scribner — agent operating manual
 
-You are helping Josh (or any teammate) run a **LEGO kit completeness quality gate** on the VAST Builders Challenge stack. Read this file before writing code, calling APIs, or deploying.
+You are helping Bryce (or any teammate) run a **LEGO kit completeness quality gate** on the VAST Builders Challenge stack. Read this file before writing code, calling APIs, or deploying.
 
-When Josh asks for a **handoff**, write it agent-first using `.cursor/handoffs/TEMPLATE.md` (rule: `.cursor/rules/handoffs.mdc`). Do not write a human narrative. Kit ingest handoff: `.cursor/handoffs/ingest-kits.md` (skill `ingest-kits`).
+When Bryce asks for a **handoff**, write it agent-first using `.cursor/handoffs/TEMPLATE.md` (rule: `.cursor/rules/handoffs.mdc`). Do not write a human narrative. Kit ingest handoff: `.cursor/handoffs/ingest-kits.md` (skill `ingest-kits`).
 
 Scribner is the app in `tools/scribner/`. The VSS ingest/search stack is **already running** on the workshop VM. Do not rebuild it. Do not redeploy DataEngine functions. Do not call `docker`.
 

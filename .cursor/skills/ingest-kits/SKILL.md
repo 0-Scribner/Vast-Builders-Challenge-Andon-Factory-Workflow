@@ -1,7 +1,7 @@
 ---
 name: ingest-kits
 description: >-
-  Upload Josh's LEGO kit phone clips into the team VSS instance with the
+  Upload Bryce's LEGO kit phone clips into the team VSS instance with the
   kit bill-of-materials custom_prompt, tags, and camera metadata. Use when
   the team has filmed race-car or front-loader kits and wants them indexed,
   or says "upload the lego videos", "ingest kits", "custom prompt for kits".
@@ -13,7 +13,7 @@ Own footage is allowed. Internet / YouTube video is **not**.
 
 ## Before any upload
 
-1. Confirm with Josh (or Cosmos) that new uploads are OK if Architecture Reference sounded re-ingest-only.
+1. Confirm with Bryce (or Cosmos) that new uploads are OK if Architecture Reference sounded re-ingest-only.
 2. Read live limits: `GET $INGRESS_URL/api/v1/config` (max_upload_size_mb, often 25).
 3. Clips must be **4.0–4.8 seconds**, kit filling the frame, white background, **no hands**, 1080p not 4K, `.mp4`.
 4. Kit id is `race-car` or `front-loader` (see `tools/scribner/kits.py`). If they filmed a new kit, edit `kits.py` first and regenerate prompts.
@@ -78,7 +78,7 @@ In Scribner (live mode, `SCRIBNER_MOCK=0`): `POST /api/scan` then open the revie
 
 ## Agent rules
 
-- Confirm kit_id with Josh if the filename does not contain `race-car` or `front-loader`.
+- Confirm kit_id with Bryce if the filename does not contain `race-car` or `front-loader`.
 - Do not upload if size exceeds `max_upload_size_mb`.
 - Do not print JWTs or passwords.
 - Designate 1–2 people for bulk upload; do not stampede the shared GPU queue.

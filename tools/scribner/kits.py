@@ -2,7 +2,7 @@
 
 Agent note
 ----------
-Edit this file when Josh changes which kits they filmed or which parts
+Edit this file when Bryce changes which kits they filmed or which parts
 count as "complete". Then regenerate ``prompts/kit_completeness_v1.txt``::
 
     python3 -c "from tools.scribner.kits import write_prompt_file; write_prompt_file()"

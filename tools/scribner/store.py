@@ -1,7 +1,7 @@
 """JSON file store under SCRIBNER_DATA_DIR.
 
 Agent note: the workshop pod is ephemeral. For the demo this is enough.
-If Josh wants durability across restarts, point SCRIBNER_DATA_DIR at a
+If Bryce wants durability across restarts, point SCRIBNER_DATA_DIR at a
 mounted volume — do not invent a VastDB writer during the hackathon.
 """
 

@@ -1,6 +1,6 @@
 """Load units from mock fixtures or from a live VSS explore listing.
 
-Agent note: live ingest is **upload**, not search. After Josh uploads
+Agent note: live ingest is **upload**, not search. After Bryce uploads
 kit clips, call ``scan_live()`` which walks Explore, pulls each
 segment's ``reasoning_content``, and runs the same parser/prior path
 as mock mode. Kit id is read from tags (``kit:race-car``) or filename.
