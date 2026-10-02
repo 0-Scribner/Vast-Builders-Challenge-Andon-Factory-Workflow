@@ -34,7 +34,15 @@ VSS_URL = (
     or os.environ.get("INGRESS_URL")
     or ""
 ).rstrip("/")
-VSS_USERNAME = os.environ.get("VSS_USERNAME") or os.environ.get("USERNAME") or ""
+def _vss_username(env=os.environ, platform: str = os.name) -> str:
+    """Windows always sets USERNAME to the local login, so there only
+    VSS_USERNAME names the team account."""
+    if env.get("VSS_USERNAME"):
+        return env["VSS_USERNAME"]
+    return "" if platform == "nt" else env.get("USERNAME", "")
+
+
+VSS_USERNAME = _vss_username()
 VSS_PASSWORD = os.environ.get("VSS_PASSWORD") or os.environ.get("PASSWORD") or ""
 
 # GPU NIMs from config.example. Each has its own host:port; do not derive one

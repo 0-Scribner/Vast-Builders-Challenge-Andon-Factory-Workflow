@@ -1,6 +1,6 @@
-# Provided videos (Pack C) — no filming required
+# Provided videos (Pack C), no filming required
 
-Scribner’s judged corpus is **Pack C: Warehouse Safety** from the official
+Scribner's judged corpus is **Pack C: Warehouse Safety** from the official
 [Architecture Reference](https://github.com/vast-data/vast-builders-challenge/blob/main/ARCHITECTURE_REFERENCE.md#video-corpus-already-indexed).
 
 | Field | Value |
@@ -18,7 +18,7 @@ The archive is **pre-ingested**. Live path is **re-ingest** (`ingest/reingest-vi
 
 Phone filming is **not** required for the judged product. LEGO completeness
 (`race-car` / `front-loader`) is **Plan B** on branch
-`cursor/plan-b-lego-completeness-72e3` — do not mix those BOMs into Primary.
+`cursor/plan-b-lego-completeness-72e3`, do not mix those BOMs into Primary.
 
 ## Path-safety checklist (Pack C)
 

@@ -62,7 +62,7 @@ GPU_SKILL_ENV: List[str] = ["GPU_BEARER_TOKEN"]
 # From deployment/deploy-app-no-registry Secret keys (aliases of INGRESS_URL / USERNAME / PASSWORD).
 DEPLOY_SECRET_ALIASES: List[str] = ["VSS_URL", "VSS_USERNAME", "VSS_PASSWORD"]
 
-# W&B Inference base URL documented by BUILD_DAY.md → docs.wandb.ai/inference.
+# W&B Inference base URL documented by BUILD_DAY.md to docs.wandb.ai/inference.
 # Not a VSS route. Override only if W&B documents a different host.
 WANDB_INFERENCE_DEFAULT = "https://api.inference.wandb.ai/v1"
 
@@ -92,7 +92,7 @@ ALLOWED_RUNTIME_ENV: Set[str] = set(
     CONFIG_EXAMPLE_ENV + GPU_SKILL_ENV + DEPLOY_SECRET_ALIASES + APP_LOCAL_ENV
 )
 
-# retrieval/README.md — routes that do NOT exist.
+# retrieval/README.md, routes that do NOT exist.
 FORBIDDEN_VSS_PATHS: List[str] = [
     "/api/v1/reports",
     "/api/v1/alerts",
