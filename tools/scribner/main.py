@@ -33,7 +33,8 @@ from pydantic import BaseModel, Field
 
 import builders_stack
 import config
-from andon import ensure_warehouse_clip, lamp_for_unit, snapshot as andon_snapshot
+from andon import ensure_corpus_clip, lamp_for_unit, snapshot as andon_snapshot
+from corpus import public_corpus, pack_for_camera
 from gpu_client import available as gpu_available
 from kits import (
     CAMERA_ID,
@@ -63,7 +64,7 @@ async def _lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Scribner warehouse andon / near-miss gate", version="2.2.0", lifespan=_lifespan)
+app = FastAPI(title="Scribner corpus andon / near-miss gate", version="2.3.0", lifespan=_lifespan)
 
 STATIC = config.STATIC_DIR
 STATIC.mkdir(parents=True, exist_ok=True)
@@ -105,6 +106,7 @@ def health() -> Dict[str, Any]:
         "line": LINE,
         "product": PRODUCT,
         "corpus": "provided",
+        "video_corpus": public_corpus(),
         "pack": config.PACK,
         "camera_id": CAMERA_ID,
         "payoff_query": PAYOFF_QUERY,
@@ -147,6 +149,9 @@ def api_units() -> Dict[str, Any]:
             {
                 "id": uid,
                 "kit_id": u.get("kit_id"),
+                "camera_id": u.get("camera_id"),
+                "location": u.get("location"),
+                "pack": u.get("pack") or pack_for_camera(str(u.get("camera_id") or "")),
                 "variant": u.get("variant"),
                 "filename": u.get("filename"),
                 "decision": decisions.get(uid),
@@ -178,6 +183,9 @@ def api_queue() -> Dict[str, Any]:
             {
                 "id": u.get("id"),
                 "kit_id": u.get("kit_id"),
+                "camera_id": u.get("camera_id"),
+                "location": u.get("location"),
+                "pack": u.get("pack") or pack_for_camera(str(u.get("camera_id") or "")),
                 "filename": u.get("filename"),
                 "variant": u.get("variant"),
                 "caption": u.get("caption"),
@@ -260,7 +268,14 @@ def api_kits() -> Dict[str, Any]:
         "stack_line": STACK_LINE,
         "line": LINE,
         "product": PRODUCT,
+        "corpus": public_corpus(),
     }
+
+
+@app.get("/api/corpus")
+def api_corpus() -> Dict[str, Any]:
+    """Official Architecture Reference cameras. Demo site sources."""
+    return public_corpus()
 
 
 @app.get("/api/report")
@@ -276,7 +291,7 @@ def api_report() -> PlainTextResponse:
 
 @app.get("/clip")
 def clip(source: str = Query(""), unit_id: str = Query("")) -> Response:
-    """Pack C segment. Mock paints an andon-tinted warehouse aisle for this unit."""
+    """Official corpus segment. Mock paints an andon-tinted stand-in for this camera."""
     source = clip_source(source, unit_id)
     if state.mock or not config.VSS_URL:
         path = _ensure_mock_clip(unit_id)
@@ -292,7 +307,7 @@ def clip(source: str = Query(""), unit_id: str = Query("")) -> Response:
 
 
 def clip_source(source: str = "", unit_id: str = "") -> str:
-    """Live /clip must stream the unit's Pack C segment, not an empty source."""
+    """Live /clip must stream the unit's official corpus segment, not an empty source."""
     if source:
         return source
     if not unit_id:
@@ -305,7 +320,8 @@ def clip_source(source: str = "", unit_id: str = "") -> str:
 
 def _ensure_mock_clip(unit_id: str = "") -> Path:
     unit = state.unit(unit_id) if unit_id else None
-    return ensure_warehouse_clip(lamp_for_unit(unit) if unit else "yellow")
+    cam = str((unit or {}).get("camera_id") or CAMERA_ID)
+    return ensure_corpus_clip(lamp_for_unit(unit) if unit else "yellow", cam)
 
 
 def main() -> None:

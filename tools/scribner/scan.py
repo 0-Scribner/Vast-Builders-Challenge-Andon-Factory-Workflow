@@ -1,9 +1,9 @@
 """Load units from mock fixtures or from the provided VSS corpus.
 
-Live path for Pack C is **re-ingest** of already-indexed SDG warehouse
-clips, then ``scan_live()`` walks Explore (filtered to
-``sdg_warehouse_cam-2`` unless ``SCRIBNER_PACK=cross``) and runs the
-same PATH_CLEAR / NEAR_MISS parser as mock mode.
+Live path is **re-ingest** of already-indexed official corpus clips.
+``scan_live()`` searches the payoff query when ``SCRIBNER_PACK=cross``
+(default), or walks Explore filtered to ``SCRIBNER_CAMERA_ID`` when
+``PACK=C``. Same PATH_CLEAR / NEAR_MISS parser as mock mode.
 
 YOLO person/vehicle **corroborates**. It must not sole-source AUTO_CLEAR.
 """
@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import config
 from inspection import parse_caption
+from corpus import pack_for_camera
 from kits import CAMERA_TO_KIT, kit_for_camera, kit_ids
 from llm import prior_for
 from mock_data import build_mock_units
@@ -106,6 +107,7 @@ def _unit_from_parent(client: VssClient, parent: Dict[str, Any], i: int) -> Dict
         "filename": filename,
         "camera_id": camera_id,
         "location": parent.get("location") or "",
+        "pack": pack_for_camera(camera_id),
         "tags": tags,
         "caption": caption,
         "inspection": inspection,

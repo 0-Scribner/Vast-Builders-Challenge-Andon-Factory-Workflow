@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Scribner — 安灯 ANDON · Pack C</title>
+  <title>Scribner — 安灯 ANDON · official corpus</title>
   <style>
     :root {
       --bg: #07090c;
@@ -125,7 +125,7 @@
   <header>
     <div>
       <h1>Scribner <span class="ja">安灯</span></h1>
-      <div class="sub">ANDON · Pack C 倉庫通路 · person close to a moving vehicle</div>
+      <div class="sub">ANDON · official corpus · person close to a moving vehicle</div>
     </div>
     <div class="sp"></div>
     <span id="modeChip" class="chip HOLD">…</span>
@@ -159,7 +159,7 @@
         </div>
         <div>
           <div class="gemba-frame yellow" id="gembaFrame">
-            <div class="gemba-tag" id="gembaTag">現場 · sdg_warehouse_cam-2</div>
+            <div class="gemba-tag" id="gembaTag">現場 · official camera</div>
             <video id="player" controls autoplay muted loop playsinline></video>
           </div>
         </div>
@@ -255,13 +255,15 @@ function renderAndon(a) {
   const frame = $('gembaFrame');
   frame.classList.remove('green','yellow','red');
   frame.classList.add(a.station_lamp || 'yellow');
-  $('gembaTag').textContent = `現場 ${a.station_ja || ''} · ${a.camera_id || 'sdg_warehouse_cam-2'} · 工程 ${a.station_ja_lamp || ''}`;
+  $('gembaTag').textContent = `現場 ${a.kind_ja || a.station_ja || ''} · Pack ${a.pack || ''} · ${a.camera_id || ''} · 工程 ${a.station_ja_lamp || ''}`;
   const c = a.counts || {};
+  const cams = (a.cameras || []).join(' · ');
   $('andonMeta').innerHTML = [
     `<div><strong>LINE ${a.line_ja}</strong> · ${a.line_en}</div>`,
     `<div>${a.gemba} ${a.camera_id} / ${a.location}</div>`,
     `<div>緑 ${c.green||0} · 黄 ${c.yellow||0} · 赤 ${c.red||0} · open ${a.open_holds||0}黄/${a.open_stops||0}赤</div>`,
     `<div>${a.rule}</div>`,
+    cams ? `<div>cameras ${cams}</div>` : '',
   ].join('');
 }
 
@@ -288,7 +290,7 @@ function renderQueue() {
     const lamp = lampOf(d);
     return `<div class="queue-item ${active}" onclick="select('${u.id}')">
       <span class="dot ${lamp}"></span>
-      <strong>${u.id}</strong> · ${u.kit_id || ''}
+      <strong>${u.id}</strong> · ${u.camera_id || u.kit_id || ''}
       <span class="chip ${d}">${d}</span>
       <div class="hint">p_fail=${p} · ${hz}</div>
     </div>`;
@@ -335,6 +337,9 @@ function renderUnit(u) {
     chip('decision', d.decision),
     kv('p_fail', d.p_fail),
     kv('prior', (u.prior || {}).p_fail_prior),
+    kv('camera', u.camera_id),
+    kv('location', u.location),
+    kv('pack', u.pack),
     kv('scene', u.kit_id),
     kv('confidence', insp.confidence),
     kv('hazard', (insp.hazards || insp.missing || []).join(', ') || 'NONE'),
@@ -388,7 +393,7 @@ async function scan() {
 async function loadUnits() {
   const data = await (await fetch('/api/units')).json();
   const rows = data.units || [];
-  $('unitTable').innerHTML = `<tr><th></th><th>id</th><th>scene</th><th>variant</th><th>gate</th><th>p_fail</th><th>label</th><th>hazard</th></tr>` +
+  $('unitTable').innerHTML = `<tr><th></th><th>id</th><th>camera</th><th>location</th><th>scene</th><th>variant</th><th>gate</th><th>p_fail</th><th>label</th><th>hazard</th></tr>` +
     rows.map(u => {
       const d = u.decision || {};
       const lab = u.label || {};
@@ -396,7 +401,7 @@ async function loadUnits() {
       const lamp = lampOf(d.decision);
       return `<tr onclick="tab('review'); select('${u.id}')">
         <td><span class="dot ${lamp}"></span></td>
-        <td>${u.id}</td><td>${u.kit_id||''}</td><td>${u.variant||''}</td>
+        <td>${u.id}</td><td>${u.camera_id||''}</td><td>${u.location||''}</td><td>${u.kit_id||''}</td><td>${u.variant||''}</td>
         <td><span class="chip ${d.decision||''}">${d.decision||''}</span></td>
         <td>${d.p_fail ?? ''}</td>
         <td>${lab.verdict || ''}</td>

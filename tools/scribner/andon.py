@@ -1,16 +1,17 @@
-"""Japanese QC andon for the Pack C warehouse line.
+"""Japanese QC andon on the official Builders Challenge corpus.
 
 TPS mapping (jidoka / mieruka / poka-yoke — not a translation sticker):
 
 - 緑 正常   AUTO_CLEAR  — path is clear, line runs
-- 黄 呼び出し HOLD      — andon cord: a human must look at the aisle clip
+- 黄 呼び出し HOLD      — andon cord: a human must look at the clip
 - 赤 停止   AUTO_ALERT  — near-miss / blocked path; do not auto-clear
 
-The warehouse clip is the 現場 (gemba). The board is the 安灯.
+現場 (gemba) is the official camera on screen (I-24, PIE, neighborhood,
+warehouse, indoor). The board is the 安灯.
 False CLEAR is 重大不良: a red lamp must never become green without a human.
 
-Mock mode paints three Pack C stand-in clips (empty aisle / hold / near-miss)
-so the operator sees the lamp on the footage, not a grey rectangle.
+Live mode streams the VSS segment. Mock paints a camera-kind stand-in
+tinted to the station lamp — not a grey rectangle, not YouTube.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
+from corpus import READY_CAMERA_IDS, clip_kind, pack_for_camera, public_corpus
 from kits import CAMERA_ID, LOCATION, PACK_C_CAMERA, PAYOFF_QUERY, PRODUCT, STACK_LINE
 
 LAMP_GREEN = "green"
@@ -44,6 +46,13 @@ LAMP_EN = {
 STATION_JA = {
     "warehouse-aisle": "倉庫通路",
     "person-near-vehicle": "人対車両",
+}
+KIND_JA = {
+    "warehouse": "倉庫",
+    "highway": "高速道路",
+    "dashcam": "運転",
+    "street": "街区",
+    "indoor": "屋内",
 }
 
 _RED_DECISIONS = {"AUTO_ALERT", "AUTO_FAIL", "UNSAFE"}
@@ -140,49 +149,101 @@ def _font() -> str:
     return ""
 
 
-def clip_path_for_lamp(lamp: str) -> Path:
+def clip_path_for_lamp(lamp: str, kind: str = "warehouse") -> Path:
     lamp = lamp if lamp in _CLIP else LAMP_YELLOW
-    return Path(f"/tmp/scribner_andon_{lamp}.mp4")
+    if kind == "warehouse":
+        return Path(f"/tmp/scribner_andon_{lamp}.mp4")
+    return Path(f"/tmp/scribner_andon_{kind}_{lamp}.mp4")
+
+
+def _scene_draw(kind: str, spec: Dict[str, str]) -> str:
+    """ffmpeg drawbox chain. Lamp tint is the andon language; geometry is the camera."""
+    floor, rack, fg = spec["floor"], spec["rack"], spec["fg"]
+    if kind == "highway":
+        return (
+            f"drawbox=x=0:y=220:w=960:h=200:color={floor}:t=fill,"
+            f"drawbox=x=0:y=310:w=960:h=6:color=0xf0e6a0:t=fill,"
+            f"drawbox=x=80:y=250:w=70:h=8:color=0xf0e6a0:t=fill,"
+            f"drawbox=x=280:y=250:w=70:h=8:color=0xf0e6a0:t=fill,"
+            f"drawbox=x=480:y=250:w=70:h=8:color=0xf0e6a0:t=fill,"
+            f"drawbox=x=680:y=250:w=70:h=8:color=0xf0e6a0:t=fill,"
+            f"drawbox=x=0:y=0:w=960:h=8:color={fg}:t=fill"
+        )
+    if kind == "dashcam":
+        return (
+            f"drawbox=x=0:y=0:w=960:h=220:color=0x4a6a88:t=fill,"
+            f"drawbox=x=0:y=220:w=960:h=320:color={floor}:t=fill,"
+            f"drawbox=x=380:y=220:w=200:h=320:color=0x3a3a3a:t=fill,"
+            f"drawbox=x=470:y=220:w=8:h=320:color=0xf0e6a0:t=fill,"
+            f"drawbox=x=0:y=0:w=960:h=8:color={fg}:t=fill"
+        )
+    if kind == "street":
+        return (
+            f"drawbox=x=40:y=80:w=160:h=200:color={rack}:t=fill,"
+            f"drawbox=x=240:y=60:w=140:h=220:color={rack}:t=fill,"
+            f"drawbox=x=760:y=90:w=160:h=190:color={rack}:t=fill,"
+            f"drawbox=x=0:y=300:w=960:h=240:color={floor}:t=fill,"
+            f"drawbox=x=0:y=300:w=960:h=10:color=0xc4a35a:t=fill,"
+            f"drawbox=x=0:y=0:w=960:h=8:color={fg}:t=fill"
+        )
+    if kind == "indoor":
+        return (
+            f"drawbox=x=0:y=0:w=180:h=540:color={rack}:t=fill,"
+            f"drawbox=x=780:y=0:w=180:h=540:color={rack}:t=fill,"
+            f"drawbox=x=180:y=360:w=600:h=180:color={floor}:t=fill,"
+            f"drawbox=x=470:y=360:w=10:h=180:color={fg}:t=fill,"
+            f"drawbox=x=0:y=0:w=960:h=8:color={fg}:t=fill"
+        )
+    return (
+        f"drawbox=x=0:y=400:w=960:h=140:color={floor}:t=fill,"
+        f"drawbox=x=150:y=20:w=32:h=380:color={rack}:t=fill,"
+        f"drawbox=x=778:y=20:w=32:h=380:color={rack}:t=fill,"
+        f"drawbox=x=168:y=80:w=90:h=54:color=0xc4a35a:t=fill,"
+        f"drawbox=x=702:y=140:w=76:h=48:color=0xb08a48:t=fill,"
+        f"drawbox=x=474:y=400:w=12:h=140:color={fg}:t=fill,"
+        f"drawbox=x=0:y=0:w=960:h=8:color={fg}:t=fill"
+    )
 
 
 def ensure_warehouse_clip(lamp: str) -> Path:
-    """Pack C stand-in: aisle + racks, tinted to the andon lamp.
+    """Stable Pack C path used by existing RGB tests."""
+    return ensure_corpus_clip(lamp, PACK_C_CAMERA)
+
+
+def ensure_corpus_clip(lamp: str, camera_id: str = "") -> Path:
+    """Official-camera stand-in, tinted to the andon lamp.
 
     Live mode streams the real VSS segment. Mock paints the gemba so the
     board and the footage share a color language.
     """
     lamp = lamp if lamp in _CLIP else LAMP_YELLOW
-    path = clip_path_for_lamp(lamp)
+    cam = camera_id or PACK_C_CAMERA
+    kind = clip_kind(cam)
+    path = clip_path_for_lamp(lamp, kind)
     if path.exists() and path.stat().st_size > 1000:
         return path
     spec = _CLIP[lamp]
     font = _font()
     font_opt = f"fontfile={font}:" if font else ""
-    aisle = (
-        f"drawbox=x=0:y=400:w=960:h=140:color={spec['floor']}:t=fill,"
-        f"drawbox=x=150:y=20:w=32:h=380:color={spec['rack']}:t=fill,"
-        f"drawbox=x=778:y=20:w=32:h=380:color={spec['rack']}:t=fill,"
-        f"drawbox=x=168:y=80:w=90:h=54:color=0xc4a35a:t=fill,"
-        f"drawbox=x=702:y=140:w=76:h=48:color=0xb08a48:t=fill,"
-        f"drawbox=x=474:y=400:w=12:h=140:color={spec['fg']}:t=fill,"
-        f"drawbox=x=0:y=0:w=960:h=8:color={spec['fg']}:t=fill"
-    )
+    scene = _scene_draw(kind, spec)
+    cam_label = cam.replace(":", "-")
     label = (
-        f"{aisle},"
-        f"drawtext={font_opt}text='sdg_warehouse_cam-2':"
+        f"{scene},"
+        f"drawtext={font_opt}text='{cam_label}':"
         f"fontcolor=white:fontsize=22:x=24:y=24,"
         f"drawtext={font_opt}text='{spec['label']}':"
         f"fontcolor={spec['fg']}:fontsize=28:x=24:y=56"
     )
+    y_overlay = {"highway": 268, "dashcam": 360, "street": 330, "indoor": 340}.get(kind, 348)
     cmd: List[str] = [
         "ffmpeg", "-y",
         "-f", "lavfi", "-i", f"color=c={spec['bg']}:s=960x540:d=4.2:r=24",
     ]
-    if spec["vehicle"]:
+    if spec["vehicle"] or kind in {"highway", "dashcam", "street"}:
         cmd += ["-f", "lavfi", "-i", "color=c=0xf5a623:s=110x42:d=4.2:r=24"]
         cmd += [
             "-filter_complex",
-            f"[0:v]{label}[aisle];[aisle][1:v]overlay=x='40+t*190':y=348:shortest=1[v]",
+            f"[0:v]{label}[base];[base][1:v]overlay=x='40+t*190':y={y_overlay}:shortest=1[v]",
             "-map", "[v]",
         ]
     else:
@@ -194,12 +255,11 @@ def ensure_warehouse_clip(lamp: str) -> Path:
     subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if path.exists() and path.stat().st_size > 1000:
         return path
-    # Simpler tinted aisle — never an empty/grey rectangle.
     subprocess.run(
         [
             "ffmpeg", "-y",
             "-f", "lavfi", "-i", f"color=c={spec['bg']}:s=960x540:d=2:r=12",
-            "-vf", aisle,
+            "-vf", scene,
             "-c:v", "libx264", "-pix_fmt", "yuv420p", "-t", "2",
             "-an", str(path),
         ],
@@ -225,8 +285,12 @@ def snapshot(
     station_decision = decision_of(station_unit) if station_unit else "HOLD"
     station = lamp_for_decision(station_decision)
     kit_id = station_unit.get("kit_id") or "warehouse-aisle"
+    cam = str(station_unit.get("camera_id") or camera_id or PACK_C_CAMERA)
+    loc = str(station_unit.get("location") or location or LOCATION)
+    kind = clip_kind(cam)
     insp = station_unit.get("inspection") or {}
     hazards = insp.get("hazards") or insp.get("missing") or []
+    corpus = public_corpus()
     return {
         "board": "andon",
         "name_ja": "安灯",
@@ -237,9 +301,13 @@ def snapshot(
         "product": PRODUCT,
         "payoff_query": PAYOFF_QUERY,
         "stack_line": STACK_LINE,
-        "camera_id": camera_id or PACK_C_CAMERA,
-        "location": location,
-        "pack": pack,
+        "camera_id": cam,
+        "location": loc,
+        "pack": pack_for_camera(cam) if cam else pack,
+        "clip_kind": kind,
+        "kind_ja": KIND_JA.get(kind, kind),
+        "cameras": READY_CAMERA_IDS,
+        "corpus": corpus,
         "station_ja": STATION_JA.get(kit_id, kit_id),
         "station_id": kit_id,
         "unit_id": station_unit.get("id"),
@@ -256,7 +324,11 @@ def snapshot(
         "hazard": hazards[0] if hazards else None,
         "rule": "赤灯は人なしで緑にしない",
         "rule_en": "False CLEAR is illegal. Red never auto-greens.",
-        "footage": "Pack C aisle clip is 現場; lamps sit on the clip, not a search page.",
+        "footage": (
+            "Official challenge corpus is 現場 "
+            "(I-24, PIE dashcam, neighborhood, warehouse, indoor). "
+            "Lamps sit on that clip, not a search page."
+        ),
         "lamps": [
             {"id": LAMP_GREEN, "ja": LAMP_JA[LAMP_GREEN], "en": LAMP_EN[LAMP_GREEN], "on": line == LAMP_GREEN},
             {"id": LAMP_YELLOW, "ja": LAMP_JA[LAMP_YELLOW], "en": LAMP_EN[LAMP_YELLOW], "on": line == LAMP_YELLOW},

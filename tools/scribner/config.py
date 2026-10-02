@@ -61,10 +61,11 @@ EPSILON_ESCAPE = float(os.environ.get("SCRIBNER_EPSILON", "0.08"))
 DELTA_FALSE_REJECT = float(os.environ.get("SCRIBNER_DELTA", "0.12"))
 RETRAIN_EVERY = int(os.environ.get("SCRIBNER_RETRAIN_EVERY", "10"))
 
-# Provided corpus. Pack C = sdg_warehouse_cam-2. CROSS uses the official
-# payoff query *person close to a moving vehicle*.
-PACK = os.environ.get("SCRIBNER_PACK", "C").strip()
-CAMERA_FILTER = os.environ.get("SCRIBNER_CAMERA_ID", "sdg_warehouse_cam-2").strip()
+# Official corpus. Default CROSS = payoff query across Architecture
+# Reference cameras. PACK=C still filters to sdg_warehouse_cam-2.
+PACK = os.environ.get("SCRIBNER_PACK", "CROSS").strip()
+_default_cam = "sdg_warehouse_cam-2" if PACK.upper() in {"C", "WAREHOUSE"} else ""
+CAMERA_FILTER = os.environ.get("SCRIBNER_CAMERA_ID", _default_cam).strip()
 SEARCH_QUERY = os.environ.get(
     "SCRIBNER_SEARCH_QUERY", "person close to a moving vehicle"
 ).strip()

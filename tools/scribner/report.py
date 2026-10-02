@@ -10,6 +10,7 @@ from collections import Counter
 from typing import Any, Dict, List
 
 from andon import snapshot as andon_snapshot
+from corpus import READY_CAMERA_IDS
 from gate import review_queue
 from kits import CAMERA_ID, LOCATION, PAYOFF_QUERY, PRODUCT, STACK_LINE
 
@@ -50,6 +51,7 @@ def render_markdown(
         f"- Product: **{PRODUCT}**",
         f"- 安灯 ANDON line: **{board['line_ja']}** ({board['line_en']})",
         f"- 現場 gemba: `{board['camera_id']}` / `{board['location']}`",
+        f"- Official cameras: {', '.join(f'`{c}`' for c in READY_CAMERA_IDS)}",
         f"- Lamps: 緑 {board['counts']['green']} · 黄 {board['counts']['yellow']} · 赤 {board['counts']['red']}",
         f"- Rule: {board['rule']} — {board['rule_en']}",
         f"- Query: *{PAYOFF_QUERY}*",

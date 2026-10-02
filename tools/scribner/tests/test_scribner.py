@@ -19,6 +19,7 @@ os.environ["SCRIBNER_MOCK"] = "1"
 os.environ.setdefault("SCRIBNER_DATA_DIR", tempfile.mkdtemp(prefix="scribner-test-"))
 
 from andon import ensure_warehouse_clip, lamp_for_decision, line_lamp, snapshot  # noqa: E402
+from corpus import READY_CAMERA_IDS, public_corpus  # noqa: E402
 from gate import decide_one, pass_blocked  # noqa: E402
 from inspection import heuristic_prior, parse_caption  # noqa: E402
 from kits import CUSTOM_PROMPT_MAX, kit_for_camera, kit_ids, prompt_for_kit  # noqa: E402
@@ -42,8 +43,22 @@ class PromptLimitTests(unittest.TestCase):
         self.assertIn("person close to a moving vehicle", prompt_for_kit("warehouse-aisle"))
         self.assertEqual(kit_for_camera("sdg_warehouse_cam-2"), "warehouse-aisle")
         self.assertEqual(kit_for_camera("i24_cam-1"), "person-near-vehicle")
+        self.assertEqual(kit_for_camera("pie_cam-3"), "person-near-vehicle")
+        self.assertEqual(kit_for_camera("neighborhood_cam-1"), "person-near-vehicle")
         self.assertEqual(kit_for_camera("kit-station-1"), "person-near-vehicle")
         self.assertNotIn("race-car", kit_ids())
+
+    def test_official_corpus_cameras(self) -> None:
+        body = public_corpus()
+        ids = {c["camera_id"] for c in body["cameras"]}
+        self.assertEqual(ids, set(READY_CAMERA_IDS) | {"sf_streets_cam-1"})
+        for required in ("i24_cam-1", "pie_cam-3", "neighborhood_cam-1", "sdg_warehouse_cam-2"):
+            self.assertIn(required, ids)
+        units = build_mock_units()
+        cams = {u["camera_id"] for u in units}
+        for required in ("i24_cam-1", "pie_cam-3", "neighborhood_cam-1", "sdg_warehouse_cam-2", "smartspace_cam-1"):
+            self.assertIn(required, cams)
+        self.assertGreaterEqual(len(units), 40)
 
 
 class ParserTests(unittest.TestCase):

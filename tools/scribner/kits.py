@@ -1,7 +1,8 @@
-"""Primary product: Pack C warehouse near-miss / path-clear schema.
+"""Primary product: near-miss / path-clear schema on the official corpus.
 
-The judged demo is official Pack C (sdg_warehouse_cam-2). The same
-prompt-as-schema is the Architecture Reference payoff query
+The judged demo uses the Architecture Reference video corpus
+(I-24, PIE dashcam, neighborhood, Pack C warehouse, smart spaces).
+The same prompt-as-schema is the payoff query
 *person close to a moving vehicle*.
 
 Plan B (LEGO completeness) lives on branch
@@ -16,6 +17,8 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict, List, Optional
+
+from corpus import CAMERA_TO_SCENE as _CORPUS_SCENES
 
 CUSTOM_PROMPT_MAX = 800
 
@@ -34,17 +37,14 @@ CAMERA_ID = PACK_C_CAMERA
 CAPTURE_TYPE = PACK_C_CAPTURE
 LOCATION = PACK_C_LOCATION
 
-CAMERA_TO_SCENE: Dict[str, str] = {
-    "sdg_warehouse_cam-2": "warehouse-aisle",
-    "i24_cam-1": "person-near-vehicle",
-    "pie_cam-3": "person-near-vehicle",
-    "neighborhood_cam-1": "person-near-vehicle",
-    "sf_streets_cam-1": "person-near-vehicle",
-    "sf_streets_cam-2": "person-near-vehicle",
-    "sf_streets_cam-3": "person-near-vehicle",
-    "sf_streets_cam-4": "person-near-vehicle",
-    "smartspace_cam-1": "warehouse-aisle",
-}
+CAMERA_TO_SCENE: Dict[str, str] = dict(_CORPUS_SCENES)
+CAMERA_TO_SCENE.update(
+    {
+        "sf_streets_cam-2": "person-near-vehicle",
+        "sf_streets_cam-3": "person-near-vehicle",
+        "sf_streets_cam-4": "person-near-vehicle",
+    }
+)
 CAMERA_TO_KIT = CAMERA_TO_SCENE
 
 Hazard = Dict[str, str]

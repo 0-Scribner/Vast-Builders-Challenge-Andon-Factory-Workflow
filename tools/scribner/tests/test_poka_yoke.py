@@ -90,12 +90,32 @@ class ApiPokaYokeTests(unittest.TestCase):
         self.assertNotIn("review('COMPLETE')", html)
         self.assertNotIn("Incomplete", html)
 
+    def test_corpus_api_lists_official_cameras(self) -> None:
+        body = main.api_corpus()
+        ids = {c["camera_id"] for c in body["cameras"]}
+        self.assertIn("i24_cam-1", ids)
+        self.assertIn("pie_cam-3", ids)
+        self.assertIn("neighborhood_cam-1", ids)
+        self.assertIn("sdg_warehouse_cam-2", ids)
+        self.assertEqual(body["payoff_query"], PAYOFF_QUERY)
+        html = (Path(__file__).resolve().parents[1] / "static" / "index.html").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("official corpus", html)
+        self.assertIn("person close to a moving vehicle", html)
+
     def test_andon_api_maps_queue_to_lamps(self) -> None:
         body = main.api_andon()
         self.assertEqual(body["board"], "andon")
         self.assertEqual(body["gemba"], "現場")
-        self.assertEqual(body["camera_id"], "sdg_warehouse_cam-2")
-        self.assertEqual(body["location"], "warehouse3")
+        self.assertIn(body["camera_id"], {
+            "sdg_warehouse_cam-2", "i24_cam-1", "pie_cam-3",
+            "neighborhood_cam-1", "smartspace_cam-1",
+        })
+        self.assertIn("sdg_warehouse_cam-2", body["cameras"])
+        self.assertIn("i24_cam-1", body["cameras"])
+        self.assertIn("pie_cam-3", body["cameras"])
+        self.assertIn("neighborhood_cam-1", body["cameras"])
         self.assertEqual(body["payoff_query"], PAYOFF_QUERY)
         self.assertGreaterEqual(body["counts"]["n"], 30)
         self.assertGreater(body["counts"]["red"], 0)
