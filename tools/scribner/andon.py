@@ -1,10 +1,10 @@
 """Japanese QC andon for the Pack C warehouse line.
 
-TPS mapping (jidoka / mieruka / poka-yoke — not a translation sticker):
+TPS mapping (jidoka / mieruka / poka-yoke, not a translation sticker):
 
-- 緑 正常   AUTO_CLEAR  — path is clear, line runs
-- 黄 呼び出し HOLD      — andon cord: a human must look at the aisle clip
-- 赤 停止   AUTO_ALERT  — near-miss / blocked path; do not auto-clear
+- 緑 正常   AUTO_CLEAR , path is clear, line runs
+- 黄 呼び出し HOLD     , andon cord: a human must look at the aisle clip
+- 赤 停止   AUTO_ALERT , near-miss / blocked path; do not auto-clear
 
 The warehouse clip is the 現場 (gemba). The board is the 安灯.
 False CLEAR is 重大不良: a red lamp must never become green without a human.
@@ -122,7 +122,7 @@ def counts(decisions: Sequence[Dict[str, Any]]) -> Dict[str, int]:
 
 
 def line_lamp(queue: Sequence[Dict[str, Any]]) -> str:
-    """Worst open ticket on the review queue. Empty queue → 正常."""
+    """Worst open ticket on the review queue. Empty queue to 正常."""
     worst = LAMP_GREEN
     for u in queue:
         lamp = lamp_for_unit(u)
@@ -194,7 +194,7 @@ def ensure_warehouse_clip(lamp: str) -> Path:
     subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if path.exists() and path.stat().st_size > 1000:
         return path
-    # Simpler tinted aisle — never an empty/grey rectangle.
+    # Simpler tinted aisle, never an empty/grey rectangle.
     subprocess.run(
         [
             "ffmpeg", "-y",

@@ -6,7 +6,7 @@ This is the whole "learning" story. Keep it numpy-only (ConfigMap / slim
 image). Do not introduce sklearn.
 
 Cold start: ``w = w0`` so ``p_fail = sigmoid(prior_logit) = p_fail_prior``.
-After labels: minimize log-loss + (λ/2)||w − w0||². Overrides of the
+After labels: minimize log-loss + (λ/2)||w - w0||². Overrides of the
 system's proposal get sample weight 2.0 so the humans move the weights.
 
 Thresholds only **narrow** (T_pass can rise, T_fail can fall) so coverage
@@ -32,7 +32,7 @@ def fit_logistic(
 ) -> Dict[str, Any]:
     """Fit w on labeled units. y=1 means UNSAFE (near-miss / blocked path).
 
-    Returns a serializable scorer dict. Empty labels → return the prior anchor.
+    Returns a serializable scorer dict. Empty labels to return the prior anchor.
     """
     w0 = prior_anchor()
     indexed = {u["id"]: u for u in units}
@@ -74,7 +74,7 @@ def derive_thresholds(
     delta: float,
     prev: Optional[Dict[str, float]] = None,
 ) -> Dict[str, float]:
-    """Largest T_pass / smallest T_fail that keep Beta-smoothed error ≤ bounds.
+    """Largest T_pass / smallest T_fail that keep Beta-smoothed error <= bounds.
 
     With few labels the Beta(1,1) prior keeps thresholds conservative
     (wide HOLD band). More labels let them move inward.

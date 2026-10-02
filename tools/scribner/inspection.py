@@ -92,7 +92,7 @@ def parse_caption(text: str, kit_id: Optional[str] = None) -> Dict[str, Any]:
 
 
 def heuristic_prior(inspection: Dict[str, Any]) -> Dict[str, Any]:
-    """p_fail = P(unsafe). UNCLEAR / LOW → ~0.5 HOLD."""
+    """p_fail = P(unsafe). UNCLEAR / LOW to ~0.5 HOLD."""
     complete = inspection.get("complete")
     confidence = inspection.get("confidence") or "medium"
     hazards = inspection.get("hazards") or inspection.get("missing") or []

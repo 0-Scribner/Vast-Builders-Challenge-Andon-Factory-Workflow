@@ -12,7 +12,7 @@ refuse() {
 # Staged + unstaged paths about to be committed are not this script's job;
 # refuse if the index currently contains forbidden files.
 if git diff --cached --name-only | grep -E '\.(mp4|mov|webm|mkv|avi|zip)$' >/dev/null; then
-  refuse "staged video/zip — clips never go in git"
+  refuse "staged video/zip, clips never go in git"
 fi
 if git diff --cached --name-only | grep -E '(^|/)\.env$|\.config$' | grep -v 'config.example' >/dev/null; then
   refuse "staged secrets (.env or *.config)"
@@ -25,7 +25,7 @@ failed=0
 push_one() {
   local name="$1"
   git remote get-url "$name" >/dev/null 2>&1 || return 0
-  echo "push_both: pushing $HEAD → $name $(git rev-parse --abbrev-ref HEAD)"
+  echo "push_both: pushing $HEAD to $name $(git rev-parse --abbrev-ref HEAD)"
   # Origin remains the upstream; pushing the GitHub mirror must not replace it.
   local args=()
   if [[ "$name" == "origin" ]]; then

@@ -51,7 +51,7 @@ def render_markdown(
         f"- 安灯 ANDON line: **{board['line_ja']}** ({board['line_en']})",
         f"- 現場 gemba: `{board['camera_id']}` / `{board['location']}`",
         f"- Lamps: 緑 {board['counts']['green']} · 黄 {board['counts']['yellow']} · 赤 {board['counts']['red']}",
-        f"- Rule: {board['rule']} — {board['rule_en']}",
+        f"- Rule: {board['rule']}, {board['rule_en']}",
         f"- Query: *{PAYOFF_QUERY}*",
         f"- Stack: {STACK_LINE}",
         f"- Units scanned: **{len(units)}**",

@@ -1,7 +1,7 @@
 """Forty synthetic Pack C units so the HITL loop runs without VSS.
 
 Captions match ``inspection.parse_caption``. ``true_unsafe`` (and
-``true_incomplete`` alias) is oracle-only — never used by the scorer.
+``true_incomplete`` alias) is oracle-only, never used by the scorer.
 """
 
 from __future__ import annotations

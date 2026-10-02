@@ -8,7 +8,7 @@ venv/
 /tmp/scribner*
 *.mp4
 
-# Secrets — never commit workshop configs
+# Secrets, never commit workshop configs
 .env
 .env.*
 !.env.example

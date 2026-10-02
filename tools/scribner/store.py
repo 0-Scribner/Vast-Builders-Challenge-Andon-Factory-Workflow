@@ -1,8 +1,8 @@
 """JSON file store under SCRIBNER_DATA_DIR.
 
-Agent note: the workshop pod is ephemeral. For the demo this is enough.
-If Bryce wants durability across restarts, point SCRIBNER_DATA_DIR at a
-mounted volume — do not invent a VastDB writer during the hackathon.
+Point SCRIBNER_DATA_DIR at a mounted volume to keep labels and the scorer
+across restarts; the /app deployment mounts a PVC at /data. Scribner never
+writes to VastDB.
 """
 
 from __future__ import annotations

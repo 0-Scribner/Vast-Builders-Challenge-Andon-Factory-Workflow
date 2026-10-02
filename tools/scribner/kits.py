@@ -5,7 +5,7 @@ prompt-as-schema is the Architecture Reference payoff query
 *person close to a moving vehicle*.
 
 Plan B (LEGO completeness) lives on branch
-``cursor/plan-b-lego-completeness-72e3`` — do not mix those BOMs here.
+``cursor/plan-b-lego-completeness-72e3``, do not mix those BOMs here.
 
 Regenerate prompts::
 
@@ -180,8 +180,8 @@ def write_prompt_file(path: Optional[Path] = None) -> Path:
     out = path or (root / "prompts" / "warehouse_near_miss_v1.txt")
     out.parent.mkdir(parents=True, exist_ok=True)
     blocks = [
-        "# Generated from tools/scribner/kits.py — do not hand-edit.",
-        f"# Each CUSTOM PROMPT body is ≤{CUSTOM_PROMPT_MAX} characters.",
+        "# Generated from tools/scribner/kits.py, do not hand-edit.",
+        f"# Each CUSTOM PROMPT body is <={CUSTOM_PROMPT_MAX} characters.",
         f"# Primary line={LINE} product={PRODUCT}",
         f"# Pack C camera_id={PACK_C_CAMERA} location={PACK_C_LOCATION} capture_type={PACK_C_CAPTURE}",
         f"# Cross-pack search: {CROSS_PACK_QUERY}",

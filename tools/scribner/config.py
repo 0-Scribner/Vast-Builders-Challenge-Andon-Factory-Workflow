@@ -48,7 +48,7 @@ GPU_BEARER_TOKEN = os.environ.get("GPU_BEARER_TOKEN", "")
 # Documented on the stack; Scribner never calls it (optional ASR, kits are silent).
 CANARY_1B_URL = os.environ.get("CANARY_1B_URL", "").rstrip("/")
 
-# W&B serverless inference (BUILD_DAY.md). Missing is OK — heuristic prior kicks in.
+# W&B serverless inference (BUILD_DAY.md). Missing is OK, heuristic prior kicks in.
 WANDB_API_KEY = os.environ.get("WANDB_API_KEY", "")
 WANDB_TEAM = os.environ.get("WANDB_TEAM", "")
 WANDB_PROJECT = os.environ.get("WANDB_PROJECT", "")

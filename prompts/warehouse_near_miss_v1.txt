@@ -1,5 +1,5 @@
-# Generated from tools/scribner/kits.py — do not hand-edit.
-# Each CUSTOM PROMPT body is ≤800 characters.
+# Generated from tools/scribner/kits.py, do not hand-edit.
+# Each CUSTOM PROMPT body is <=800 characters.
 # Primary line=primary product=warehouse-near-miss
 # Pack C camera_id=sdg_warehouse_cam-2 location=warehouse3 capture_type=warehouse
 # Cross-pack search: person close to a moving vehicle
