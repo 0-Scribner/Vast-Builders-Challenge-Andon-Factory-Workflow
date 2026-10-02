@@ -61,6 +61,14 @@ EPSILON_ESCAPE = float(os.environ.get("SCRIBNER_EPSILON", "0.08"))
 DELTA_FALSE_REJECT = float(os.environ.get("SCRIBNER_DELTA", "0.12"))
 RETRAIN_EVERY = int(os.environ.get("SCRIBNER_RETRAIN_EVERY", "10"))
 
+# Provided corpus. Pack C = sdg_warehouse_cam-2. CROSS uses the official
+# payoff query *person close to a moving vehicle*.
+PACK = os.environ.get("SCRIBNER_PACK", "C").strip()
+CAMERA_FILTER = os.environ.get("SCRIBNER_CAMERA_ID", "sdg_warehouse_cam-2").strip()
+SEARCH_QUERY = os.environ.get(
+    "SCRIBNER_SEARCH_QUERY", "person close to a moving vehicle"
+).strip()
+
 PKG_DIR = Path(__file__).resolve().parent
 STATIC_DIR = PKG_DIR / "static"
 

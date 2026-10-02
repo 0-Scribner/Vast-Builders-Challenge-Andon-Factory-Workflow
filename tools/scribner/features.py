@@ -20,7 +20,7 @@ from typing import Any, Dict, List
 
 import numpy as np
 
-FEATURE_VERSION = 1
+FEATURE_VERSION = 2
 
 FEATURE_NAMES: List[str] = [
     "bias",
@@ -41,6 +41,12 @@ FEATURE_NAMES: List[str] = [
     "miss_minifig",
     "miss_windshield",
     "miss_bucket",
+    "kit_warehouse_aisle",
+    "kit_person_near_vehicle",
+    "miss_travel_lane",
+    "miss_person_gap",
+    "miss_walkway",
+    "miss_path",
 ]
 
 # Clip logits so sigmoid/exp is stable.
@@ -96,4 +102,10 @@ def vectorize(unit: Dict[str, Any]) -> np.ndarray:
     x[15] = 1.0 if "minifig" in missing_ids else 0.0
     x[16] = 1.0 if "windshield" in missing_ids else 0.0
     x[17] = 1.0 if "bucket" in missing_ids else 0.0
+    x[18] = 1.0 if kit_id == "warehouse-aisle" else 0.0
+    x[19] = 1.0 if kit_id == "person-near-vehicle" else 0.0
+    x[20] = 1.0 if "travel-lane" in missing_ids else 0.0
+    x[21] = 1.0 if "person-gap" in missing_ids else 0.0
+    x[22] = 1.0 if "walkway" in missing_ids else 0.0
+    x[23] = 1.0 if "path" in missing_ids else 0.0
     return x

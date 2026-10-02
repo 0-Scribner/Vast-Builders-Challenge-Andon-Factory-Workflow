@@ -6,7 +6,7 @@ Load a skill **before** writing curl. Full index:
 |-------|------|
 | [run-mock](skills/run-mock/SKILL.md) | Local tests + UI, no VSS |
 | [conformance-stack](skills/conformance-stack/SKILL.md) | Official Builders Stack adversarial |
-| [ingest-kits](skills/ingest-kits/SKILL.md) | Upload Bryce's LEGO clips with the BOM prompt |
+| [ingest-kits](skills/ingest-kits/SKILL.md) | Re-ingest Pack C (provided videos) with the BOM prompt |
 | [review-retrain](skills/review-retrain/SKILL.md) | HOLD queue, labels, coverage |
 | [deploy-scribner](skills/deploy-scribner/SKILL.md) | K8s `/app`, no Docker |
 

@@ -51,7 +51,7 @@ async def _lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Scribner", version="1.0.0", lifespan=_lifespan)
+app = FastAPI(title="Scribner completeness gate", version="1.1.0", lifespan=_lifespan)
 
 STATIC = config.STATIC_DIR
 STATIC.mkdir(parents=True, exist_ok=True)
@@ -71,6 +71,10 @@ def health() -> Dict[str, Any]:
     return {
         "ok": True,
         "mock": state.mock,
+        "product": "kit-completeness",
+        "corpus": "provided",
+        "pack": config.PACK,
+        "camera_id": CAMERA_ID,
         "kits": kit_ids(),
         "store": state.store.state_summary(),
         "stack": builders_stack.health_snapshot(),

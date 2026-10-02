@@ -1,6 +1,6 @@
 # Handoff: full Scribner build on Bryce's laptop (ChatGPT Cowork)
 
-You are ChatGPT Cowork on **Bryce's personal computer**. Bryce is already logged into the services this job needs (GitHub, W&B, git remotes, browser sessions). Use those sessions. Do not wait for Cursor Cloud or the workshop VM. Do the entire build here. After you finish, Bryce only films kits into `~/kit-clips` and sits as Operator.
+You are ChatGPT Cowork on **Bryce's personal computer**. Bryce is already logged into the services this job needs (GitHub, W&B, git remotes, browser sessions). Use those sessions. Do not wait for Cursor Cloud or the workshop VM. Do the entire remaining laptop work here. After you finish, Bryce only re-ingests Pack C on the workshop VM (or sits as Operator on mock).
 
 ## Receiver
 
@@ -8,10 +8,10 @@ ChatGPT Cowork, Bryce's laptop. CWD = Scribner repo (`AGENTS.md` at root when do
 
 ## Done when
 
-- [ ] Repo on this laptop is a continuation of Origin branch `cursor/lego-kit-qc-gate-72e3` (or a complete scaffold if Origin is unreachable), with Operator UI **A/O** (not C/I), `scripts/push_both.sh`, tests, mock 40 units.
+- [ ] Repo on this laptop is a continuation of Origin branch `cursor/lego-kit-qc-gate-72e3` (or a complete scaffold if Origin is unreachable), with Operator UI **C/I**, `scripts/push_both.sh`, tests, mock 40 Pack C units.
 - [ ] `export BUILDERS_CHALLENGE_DIR=/tmp/vast-builders-challenge && ./scripts/run_adversarial.sh` all OK.
-- [ ] `SCRIBNER_MOCK=1 ./scripts/run_mock.sh` → `http://127.0.0.1:8080` title **Operator — kit QC gate**; A = gate was right; O = gate was wrong; HOLD cannot A; illegal POST → 400.
-- [ ] `curl -sS http://127.0.0.1:8080/health` contains `vast-builders-challenge` and `"canary_wired": false`.
+- [ ] `SCRIBNER_MOCK=1 ./scripts/run_mock.sh` → `http://127.0.0.1:8080` subtitle **provided Pack C videos**; C = COMPLETE; I = INCOMPLETE; HOLD cannot `gate_ok`; illegal POST → 400.
+- [ ] `curl -sS http://127.0.0.1:8080/health` contains `vast-builders-challenge`, `"canary_wired": false`, `"product":"kit-completeness"`, `"corpus":"provided"`.
 - [ ] Logged-in services used: GitHub push succeeded; W&B prior path works if `WANDB_API_KEY` is set (no crash if unset); VSS `POST /api/v1/auth/login` smoke ran if `INGRESS_URL` is set (do not fail the build on 401).
 - [ ] Public GitHub `HEAD` equals local `HEAD`. Origin pushed if that remote works. `./scripts/push_both.sh` after every commit.
 - [ ] `.cursor/adversarial/YYYYMMDD-cowork.md` has Attack / Expected / Result: pass for every attack in Procedure step 9.
@@ -19,10 +19,10 @@ ChatGPT Cowork, Bryce's laptop. CWD = Scribner repo (`AGENTS.md` at root when do
 
 ## Context
 
-LEGO kit completeness QC gate for the VAST Builders Challenge. Clip = one kit. Cosmos Reason captions a BOM prompt; parser + prior-anchored logistic → AUTO_PASS / AUTO_FAIL / HOLD. Operator judges the **gate**, not bricks.
+Completeness QC gate for the VAST Builders Challenge **provided videos** (Pack C `sdg_warehouse_cam-2`). Clip = one aisle segment. Cosmos Reason captions a BOM prompt; parser + prior-anchored logistic → AUTO_PASS / AUTO_FAIL / HOLD. Operator marks COMPLETE / INCOMPLETE. False PASS is the red line.
 Only allowed stack: https://github.com/vast-data/vast-builders-challenge (`config.example`, `.cursor/skills`). No invented VSS routes. No Canary. Ingress `/app`.
-BOMs in `tools/scribner/kits.py`: race-car (4 black wheels, clear windshield, red roof, 2 yellow headlights, minifig with hat, blue door); front-loader (yellow bucket, 4 black wheels, black cabin, gray roll bar, yellow body, minifig). Prompt ≤800, labeled prose, no JSON.
-YOLO has no LEGO classes (occlusion only). ConfigMap ≲1 MiB, numpy only. False PASS is the red line. Origin already has the core app; you finish Operator A/O, wire logged-in services, push GitHub.
+BOMs in `tools/scribner/kits.py`: `warehouse-aisle` (Pack C) and `person-near-vehicle` (cross-pack); optional `race-car` / `front-loader`. Prompt ≤800, labeled prose (`PRESENT` / `MISSING` / `COMPLETE`), no JSON.
+YOLO person/hand is occlusion only on optional own clips. ConfigMap ≲1 MiB, numpy only. Origin already has the core app; you finish laptop wiring, push GitHub.
 
 ## Never
 
@@ -111,10 +111,10 @@ python3 -m pip install -q fastapi uvicorn requests numpy pydantic openai
 command -v ffmpeg >/dev/null || echo "ffmpeg missing — mock clip may be empty; do not block"
 ```
 
-6. **Finish the product** (current Origin tree still has C/I keys; you must ship Operator A/O). Sibling imports (`cd tools/scribner && python3 main.py`). Keep ConfigMap-small.
+6. **Keep the original pipeline.** Sibling imports (`cd tools/scribner && python3 main.py`). Keep ConfigMap-small. Do not rename AUTO_PASS/AUTO_FAIL or C/I.
 
-- Keep existing: `kits.py`, `inspection.py` (`inconsistent` if COMPLETE=YES and missing), `features.py`/`learn.py` (`w0[1]=1`), `gate.py` fail-closed, `llm.py` (W&B if key), `vss_client.py` (official routes only), `gpu_client.py` (env URLs, no Canary), `builders_stack.py`, `ingest.py`, `mock_data.py` ≥40 units, `scan.py`, `state.py` (poka-yoke review), `store.py`, `main.py` `/health` stack pin.
-- **Replace UI** `tools/scribner/static/index.html`: title **Operator — kit QC gate**. Card: video, BOM, caption, p_fail, decision, occlusion, inconsistent. **A** gate was right (AUTO_PASS→COMPLETE, AUTO_FAIL→INCOMPLETE; HOLD disabled + API `gate_ok=true` → 400). **O** gate was wrong (verdict + reason ≠ agree; empty reason 400). HOLD: must pick COMPLETE/INCOMPLETE. AUTO_FAIL→COMPLETE: `confirm_escape=true`. Metrics: coverage, HOLD rate, HOLD band, n_labels, false-pass risk = 0.
+- Keep existing: `kits.py` (Pack C `warehouse-aisle` BOM + optional LEGO kits), `inspection.py` (`inconsistent` if COMPLETE=YES and missing), `features.py`/`learn.py` (`w0[1]=1`), `gate.py` fail-closed AUTO_PASS/AUTO_FAIL/HOLD, `llm.py` (W&B if key), `vss_client.py` (official routes only), `gpu_client.py` (env URLs, no Canary), `builders_stack.py`, `ingest.py`, `mock_data.py` ≥40 Pack C units, `scan.py` (Pack C camera filter), `state.py` (poka-yoke review), `store.py`, `main.py` `/health` stack pin.
+- **UI** `tools/scribner/static/index.html`: subtitle **provided Pack C videos**. Card: video, BOM, caption, p_fail, decision, occlusion, inconsistent. **C** COMPLETE. **I** INCOMPLETE. HOLD: must pick COMPLETE/INCOMPLETE. AUTO_FAIL→COMPLETE: `confirm_escape=true`. Metrics: coverage, HOLD rate, HOLD band, n_labels.
 - Live degrade: if `WANDB_API_KEY` set, prior may use `https://api.inference.wandb.ai/v1` (no crash on failure). If `INGRESS_URL`/`VSS_URL` set, `VssClient().login()` once; 401 = report `vss=fail` and continue mock. If GPU URLs set, do not call Canary; optional YOLO `/healthz` only.
 
 7. **Logged-in service smoke (optional live, required to attempt).**
@@ -153,11 +153,11 @@ Set `PYTHONPATH=tools/scribner` first. Do not dump JSON from login.
 - `push_both` with staged mp4 → refuse
 - source contains `/api/v1/reports` or hardcoded `166.19.38.112` or Canary transcriptions → fail
 - `/health` missing `vast-builders-challenge` → fail
-- UI still says Complete (C) / Incomplete (I) as the primary operator action → fail (must be A/O)
+- UI does not mention provided Pack C → fail
 
 If an attack succeeds, fix before any other feature.
 
-9. **Docs.** README remaining human work = film → `~/kit-clips`. Operator uses localhost now, `/app` at the event. `docs/BUILDERS_STACK.md` names the official GitHub repo. `docs/FILM_THE_KITS.md` unchanged recipe (4.0–4.8s, fill frame, white paper, no hands, `kit-<id>_unit-<nnn>.mp4`).
+9. **Docs.** README remaining human work = re-ingest Pack C on the workshop VM. Operator uses localhost now, `/app` at the event. `docs/BUILDERS_STACK.md` names the official GitHub repo. `docs/FILM_THE_KITS.md` is the provided-corpus note (no filming required).
 
 10. **Commit and push both remotes.**
 
@@ -165,7 +165,7 @@ If an attack succeeds, fix before any other feature.
 export BUILDERS_CHALLENGE_DIR="${BUILDERS_CHALLENGE_DIR:-$HOME/vast-builders-challenge}"
 ./scripts/run_adversarial.sh
 git add -A && git status
-git commit -m "Scribner operator A/O gate, logged-in stack clients, GitHub mirror."
+git commit -m "Scribner completeness gate on provided Pack C videos."
 ./scripts/push_both.sh
 SCRIBNER_MOCK=1 ./scripts/run_mock.sh
 ```
@@ -210,7 +210,7 @@ git rev-parse HEAD
 ls .cursor/adversarial/*cowork.md
 ```
 
-Pass: adversarial green; A/O UI; `/health` pins official repo; GitHub HEAD = local; Origin pushed or explicitly skipped with reason; every attack Result: pass. Fail: fix or blocked. Do not ship C/I as the operator control.
+Pass: adversarial green; C/I UI on provided Pack C; `/health` pins official repo; GitHub HEAD = local; Origin pushed or explicitly skipped with reason; every attack Result: pass. Fail: fix or blocked. Do not ship AUTO_CLEAR/UNSAFE as the operator control.
 
 ## Report back
 
@@ -228,7 +228,7 @@ checks:
 - poka_yoke_tests:
 - builders_stack_adversarial:
 - adversarial_review:
-- operator_ui_AO:
+- operator_ui_CI:
 - health_stack_pin:
 - github_push:
 - origin_push: pass | fail | skipped
@@ -236,7 +236,7 @@ checks:
 artifacts:
 - github: https://github.com/<login>/Scribner
 - mock: http://127.0.0.1:8080
-next: Bryce films to ~/kit-clips; operator uses A/O UI; event VM upload later via ingest-kits
+next: Bryce re-ingests Pack C on the workshop VM; operator uses C/I UI
 ```
 
 ## Stop and escalate

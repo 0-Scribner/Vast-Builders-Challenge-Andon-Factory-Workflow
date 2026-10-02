@@ -10,8 +10,8 @@ description: >-
 # Run Scribner in mock mode
 
 Do this **before** touching the live VSS stack. Mock mode loads 40 synthetic
-LEGO kit units (complete, missing wheels/roof/bucket/minifig, hidden-door,
-hands-in-frame) and runs the same parser → prior → scorer → HOLD queue as live.
+Pack C aisle units (complete, missing person-gap/walkway/lane, hidden-gap,
+view-blocked) and runs the same parser → prior → scorer → HOLD queue as live.
 
 ## Tests (must pass)
 
@@ -44,7 +44,7 @@ PYTHONPATH=tools/scribner python3 scripts/simulate_reviews.py
 ```
 
 Expect coverage after oracle labels ≥ coverage at cold start, and
-`missing-wheels` units with `p_fail ≥ 0.55`.
+`missing-person-gap` units with `p_fail ≥ 0.55`.
 
 ## Agent rules
 

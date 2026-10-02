@@ -19,7 +19,7 @@ os.environ["SCRIBNER_MOCK"] = "1"
 os.environ.setdefault("SCRIBNER_DATA_DIR", tempfile.mkdtemp(prefix="scribner-test-"))
 
 from inspection import heuristic_prior, parse_caption  # noqa: E402
-from kits import CUSTOM_PROMPT_MAX, kit_ids, prompt_for_kit  # noqa: E402
+from kits import CUSTOM_PROMPT_MAX, kit_for_camera, kit_ids, prompt_for_kit  # noqa: E402
 from learn import derive_thresholds, fit_logistic, predict_p_fail  # noqa: E402
 from mock_data import build_mock_units  # noqa: E402
 from state import AppState  # noqa: E402
@@ -34,6 +34,11 @@ class PromptLimitTests(unittest.TestCase):
             self.assertIn("PRESENT:", p)
             self.assertIn("MISSING:", p)
             self.assertIn("COMPLETE:", p)
+        self.assertIn("warehouse-aisle", kit_ids())
+        self.assertIn("sdg_warehouse", prompt_for_kit("warehouse-aisle"))
+        self.assertEqual(kit_for_camera("sdg_warehouse_cam-2"), "warehouse-aisle")
+        self.assertEqual(kit_for_camera("i24_cam-1"), "person-near-vehicle")
+        self.assertEqual(kit_for_camera("kit-station-1"), "race-car")
 
 
 class ParserTests(unittest.TestCase):
@@ -74,6 +79,29 @@ class ParserTests(unittest.TestCase):
         self.assertGreaterEqual(prior["p_fail_prior"], 0.4)
         self.assertLessEqual(prior["p_fail_prior"], 0.6)
 
+    def test_pack_c_complete_aisle(self) -> None:
+        cap = (
+            "PRESENT: a clear travel lane, person-vehicle separation, "
+            "a pallet-free walkway, an unobstructed aisle path. "
+            "MISSING: NONE. UNCLEAR: NONE. COMPLETE: YES. CONFIDENCE: HIGH."
+        )
+        rec = parse_caption(cap, kit_id="warehouse-aisle")
+        self.assertTrue(rec["complete"])
+        self.assertIn("person-gap", rec["part_ids_present"])
+        self.assertEqual(rec["missing"], [])
+        self.assertLess(heuristic_prior(rec)["p_fail_prior"], 0.2)
+
+    def test_pack_c_missing_person_gap(self) -> None:
+        cap = (
+            "PRESENT: a pallet-free walkway. "
+            "MISSING: person-vehicle separation. UNCLEAR: NONE. "
+            "COMPLETE: NO. CONFIDENCE: HIGH. Forklift close to a person."
+        )
+        rec = parse_caption(cap, kit_id="warehouse-aisle")
+        self.assertFalse(rec["complete"])
+        self.assertIn("person-gap", rec["part_ids_missing"])
+        self.assertGreater(heuristic_prior(rec)["p_fail_prior"], 0.8)
+
 
 class LearningTests(unittest.TestCase):
     def test_cold_start_equals_prior(self) -> None:
@@ -96,7 +124,7 @@ class LearningTests(unittest.TestCase):
             )
         scorer = fit_logistic(units, labels)
         # Salient incomplete should score high after fit.
-        missing = next(u for u in units if u["variant"] == "missing-wheels")
+        missing = next(u for u in units if u["variant"] == "missing-person-gap")
         complete = next(u for u in units if u["variant"] == "complete")
         self.assertGreater(predict_p_fail(missing, scorer), 0.6)
         self.assertLess(predict_p_fail(complete, scorer), 0.4)
@@ -138,13 +166,13 @@ class LoopTests(unittest.TestCase):
         # Salient missing wheels should now be AUTO_FAIL or at least high p.
         units = {u["id"]: u for u in self.state.store.load_units()}
         decisions = {d["unit_id"]: d for d in self.state.store.load_decisions()}
-        mw = next(u for u in units.values() if u["variant"] == "missing-wheels")
+        mw = next(u for u in units.values() if u["variant"] == "missing-person-gap")
         self.assertGreaterEqual(decisions[mw["id"]]["p_fail"], 0.55)
         self.assertIn(decisions[mw["id"]]["decision"], {"AUTO_FAIL", "HOLD"})
         complete = next(u for u in units.values() if u["variant"] == "complete")
         self.assertLessEqual(decisions[complete["id"]]["p_fail"], 0.45)
-        # Subtle hidden-door should not all be auto-passed (low confidence).
-        hidden = [u for u in units.values() if u["variant"] == "hidden-door"]
+        # Subtle hidden-gap should not all be auto-passed (low confidence).
+        hidden = [u for u in units.values() if u["variant"] == "hidden-gap"]
         hidden_dec = [decisions[u["id"]]["decision"] for u in hidden]
         self.assertTrue(any(d != "AUTO_PASS" for d in hidden_dec))
 

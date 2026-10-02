@@ -50,3 +50,13 @@ class ApiPokaYokeTests(unittest.TestCase):
                 )
             )
         self.assertEqual(ctx.exception.status_code, 400)
+
+    def test_ui_is_original_completeness_operator(self) -> None:
+        html = (Path(__file__).resolve().parents[1] / "static" / "index.html").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("Complete", html)
+        self.assertIn("Incomplete", html)
+        self.assertIn("provided Pack C", html)
+        self.assertNotIn("AUTO_CLEAR", html)
+        self.assertNotIn("UNSAFE", html)

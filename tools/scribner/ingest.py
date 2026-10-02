@@ -68,7 +68,7 @@ def assert_uploadable(
     require_filename: bool = True,
 ) -> str:
     if looks_like_remote(path) or _YOUTUBE.search(path or ""):
-        raise IngestRejected("refusing remote/YouTube path; own footage files only")
+        raise IngestRejected("refusing remote/YouTube path; provided corpus or own files only")
     p = Path(path)
     if p.suffix.lower() not in ALLOWED_EXT:
         raise IngestRejected(f"extension {p.suffix!r} is not an allowed upload type")
@@ -97,7 +97,7 @@ def filter_upload_fields(data: dict) -> dict:
 
 
 def tags_for(kit_id: str, unit: str, variant: str = "unknown") -> str:
-    return f"kit:{kit_id},unit:{unit},variant:{variant},scribner"
+    return f"kit:{kit_id},unit:{unit},variant:{variant},scribner,corpus:provided"
 
 
 def iter_clip_files(folder: str, known: Optional[Iterable[str]] = None) -> list:

@@ -60,11 +60,11 @@ def _wandb_prior(inspection: Dict[str, Any], kit_id: str) -> Optional[Dict[str, 
             {
                 "role": "system",
                 "content": (
-                    "You verify LEGO kit completeness from a parsed caption. "
+                    "You verify video completeness from a parsed caption. "
                     "Reply with ONLY JSON: "
                     '{"p_fail_prior": float 0-1, "proposed": "PASS"|"FAIL"|"HOLD", '
                     '"rationale": string ≤140 chars}. '
-                    "p_fail_prior is P(kit is incomplete). "
+                    "p_fail_prior is P(the unit is incomplete). "
                     "If missing parts are named, p_fail_prior ≥ 0.8. "
                     "If complete=YES and confidence=high, p_fail_prior ≤ 0.15. "
                     "If unclear, around 0.5."

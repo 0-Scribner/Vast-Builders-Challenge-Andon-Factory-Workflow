@@ -4,7 +4,7 @@ description: >-
   Drive Scribner's human-in-the-loop loop: load the HOLD queue, record
   COMPLETE/INCOMPLETE labels with reason codes, retrain the prior-anchored
   logistic scorer, and report coverage / HOLD-band metrics. Use when the
-  team is labeling kits, hitting Retrain, or asking whether the gate learned.
+  team is labeling Pack C clips, hitting Retrain, or asking whether
 ---
 
 # Review and retrain
@@ -51,4 +51,4 @@ from the live scorer; it is test-only.
 
 - Auto-retrain already fires every `SCRIBNER_RETRAIN_EVERY` (default 10) labels; still call `/api/retrain` before a demo so metrics_log has a row.
 - Do not lower epsilon/delta during a demo to fake coverage.
-- If queue is empty after scan, either every unit was auto-decided (good — check audit samples) or scan found nothing (check tags `kit:` on Explore).
+- If queue is empty after scan, either every unit was auto-decided (good — check audit samples) or scan found nothing (check `sdg_warehouse_cam-2` on Explore and that captions have `PRESENT:`).

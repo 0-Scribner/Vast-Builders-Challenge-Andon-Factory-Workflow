@@ -1,41 +1,42 @@
-# How to film the kits
+# Provided videos (Pack C) — no filming required
 
-Agent note: give this to Bryce before they pick up a phone. Bad footage
-cannot be rescued by a better prompt.
+Scribner’s judged corpus is **Pack C: Warehouse Safety** from the official
+[Architecture Reference](https://github.com/vast-data/vast-builders-challenge/blob/main/ARCHITECTURE_REFERENCE.md#video-corpus-already-indexed).
 
-## Kits
+| Field | Value |
+|-------|--------|
+| Source | SDG warehouse RGB |
+| Location | `warehouse3` |
+| `camera_id` | `sdg_warehouse_cam-2` |
+| Indexed | ~178 short ceiling / aisle clips |
+| Kit id | `warehouse-aisle` |
+| Example query | *Forklift approaching a person in a warehouse aisle* |
 
-Defined in `tools/scribner/kits.py`:
+The archive is **pre-ingested**. Live path is **re-ingest** (`ingest/reingest-videos` /
+`reingest-chunk`). Do not re-upload the corpus. Do not pull YouTube.
 
-- **race-car** — 4 black wheels, 1 clear windshield, 1 red roof, 2 yellow headlights, 1 minifigure with a hat, 1 blue door
-- **front-loader** — 1 yellow bucket, 4 black wheels, 1 black cabin, 1 gray roll bar, 1 yellow body, 1 minifigure
+Phone filming is **not** required for the judged product. Optional extra
+LEGO kits (`race-car`, `front-loader`) if Bryce later wants them:
 
-Do not add a third kit unless you also add it to `KITS` and regenerate prompts.
+- Filename `kit-<kit_id>_unit-<nnn>.mp4`
+- 4.0–4.8s, fill the frame, white paper, no hands
+- Skill still `ingest-kits` (upload path)
 
-## Shot recipe
+## Completeness checklist (Pack C)
 
-- Phone on a book / tripod, not handheld.
-- White paper or table, one desk lamp, no mixed window glare.
-- Kit **fills the frame**. Cosmos sees a handful of reduced-resolution frames.
-- **No hands** in the shot (hands → UNCLEAR + occlusion HOLD).
-- **4.0–4.8 seconds** so the 5s segmenter emits exactly one clip.
-- 1080p 30fps. Not 4K (upload cap ~25 MB).
-- Filename: `kit-<id>_unit-<number>.mp4` e.g. `kit-race-car_unit-007.mp4`.
+A complete (safe) aisle has:
 
-## Take list (about 40 clips)
+- a clear travel lane
+- person-vehicle separation
+- a pallet-free walkway
+- an unobstructed aisle path
 
-Per kit:
+Salient misses (person-vehicle gap, pallet in walkway, blocked lane) are
+what AUTO_FAIL. Unclear distance is what HOLD is for.
 
-| Variant | Count | What to change |
-|---------|-------|----------------|
-| complete | 8–10 | Every BOM part on, two slight angles |
-| missing-wheels | 4 | All wheels off |
-| missing-roof or missing-bucket | 3 | The salient large part |
-| missing-minifig | 2 | Empty seat |
-| hidden-side | 2 | Complete kit, but the distinguishing part faces away |
+## After the corpus is re-ingested
 
-Salient omissions (wheels, roof, bucket, minifig) are what AUTO_FAIL. Hidden-side is what HOLD is for.
+Captions must contain `PRESENT:` and `COMPLETE:`. Then `POST /api/scan`
+on the Scribner app.
 
-## After filming
-
-AirDrop / drive / USB onto a laptop, then the `ingest-kits` skill on the VM. Do not YouTube them.
+Skill: `.cursor/skills/ingest-kits/SKILL.md`.

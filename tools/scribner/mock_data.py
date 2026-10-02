@@ -1,13 +1,12 @@
-"""Forty synthetic kit units so the HITL loop runs without VSS.
+"""Forty synthetic Pack C units so the HITL loop runs without VSS.
 
-Agent note: captions **must** match ``inspection.parse_caption`` so tests
-and the UI stay honest. Ground-truth ``true_incomplete`` is what a
-reviewer would say — used by ``scripts/simulate_reviews.py`` and tests,
-never by the scorer itself.
+Captions **must** match ``inspection.parse_caption`` (PRESENT / MISSING /
+COMPLETE). Ground-truth ``true_incomplete`` is what a reviewer would say
+— used by ``scripts/simulate_reviews.py`` and tests, never by the scorer.
 
-Salient defects (wheels, roof, bucket, minifig) have clean COMPLETE: NO
-captions. Subtle defects (a far-side door) are labeled UNCLEAR / wrong
-COMPLETE: YES so the gate HOLDs them — that is the demo of HITL value.
+Salient defects (person-vehicle gap, pallet in walkway, blocked lane)
+have clean COMPLETE: NO captions. Subtle defects (unclear distance) are
+labeled UNCLEAR / wrong COMPLETE: YES so the gate HOLDs them.
 """
 
 from __future__ import annotations
@@ -18,6 +17,37 @@ from inspection import parse_caption
 from kits import CAMERA_ID, LOCATION
 from llm import prior_for
 
+_COMPLETE = (
+    "PRESENT: a clear travel lane, person-vehicle separation, a pallet-free walkway, "
+    "an unobstructed aisle path. MISSING: NONE. UNCLEAR: NONE. COMPLETE: YES. "
+    "CONFIDENCE: HIGH. The aisle is open and no person is close to a moving vehicle."
+)
+_MISSING_GAP = (
+    "PRESENT: a pallet-free walkway, an unobstructed aisle path. "
+    "MISSING: person-vehicle separation, a clear travel lane. UNCLEAR: NONE. "
+    "COMPLETE: NO. CONFIDENCE: HIGH. A forklift is moving close to a person in the aisle."
+)
+_MISSING_WALKWAY = (
+    "PRESENT: a clear travel lane, person-vehicle separation. "
+    "MISSING: a pallet-free walkway. UNCLEAR: NONE. COMPLETE: NO. CONFIDENCE: HIGH. "
+    "A pallet sits in the pedestrian walkway."
+)
+_MISSING_LANE = (
+    "PRESENT: person-vehicle separation, a pallet-free walkway. "
+    "MISSING: a clear travel lane, an unobstructed aisle path. UNCLEAR: NONE. "
+    "COMPLETE: NO. CONFIDENCE: HIGH. Equipment blocks the travel lane."
+)
+_HIDDEN_GAP = (
+    "PRESENT: a pallet-free walkway, an unobstructed aisle path. "
+    "MISSING: NONE. UNCLEAR: person-vehicle separation. COMPLETE: YES. "
+    "CONFIDENCE: LOW. Distance between the person and the forklift cannot be verified."
+)
+_VIEW_BLOCKED = (
+    "PRESENT: a clear travel lane. MISSING: NONE. "
+    "UNCLEAR: person-vehicle separation, a pallet-free walkway, an unobstructed aisle path. "
+    "COMPLETE: YES. CONFIDENCE: LOW. Glare and a rack hide most of the aisle."
+)
+
 
 def build_mock_units() -> List[Dict[str, Any]]:
     specs = _specs()
@@ -27,12 +57,12 @@ def build_mock_units() -> List[Dict[str, Any]]:
         caption = spec["caption"]
         inspection = parse_caption(caption, kit_id=kit_id)
         unit: Dict[str, Any] = {
-            "id": f"kit-{i:03d}",
+            "id": f"packc-{i:03d}",
             "kit_id": kit_id,
             "filename": spec["filename"],
             "camera_id": CAMERA_ID,
             "location": LOCATION,
-            "tags": [f"kit:{kit_id}", f"unit:{i:03d}", spec["variant"]],
+            "tags": [f"kit:{kit_id}", f"unit:{i:03d}", spec["variant"], "corpus:provided"],
             "caption": caption,
             "inspection": inspection,
             "source": spec["source"],
@@ -48,10 +78,16 @@ def build_mock_units() -> List[Dict[str, Any]]:
 
 
 def _specs() -> List[Dict[str, Any]]:
-    """20 complete + 14 salient incomplete + 6 subtle/unclear."""
+    """12 complete + 20 salient incomplete + 8 subtle/unclear."""
     out: List[Dict[str, Any]] = []
 
-    def add(kit_id: str, variant: str, caption: str, true_incomplete: bool, occlusion: bool = False) -> None:
+    def add(
+        kit_id: str,
+        variant: str,
+        caption: str,
+        true_incomplete: bool,
+        occlusion: bool = False,
+    ) -> None:
         n = len(out) + 1
         out.append(
             {
@@ -66,86 +102,18 @@ def _specs() -> List[Dict[str, Any]]:
             }
         )
 
-    # --- complete race cars ---
-    for _ in range(10):
-        add(
-            "race-car",
-            "complete",
-            "PRESENT: 4 black wheels, 1 clear windshield, 1 red roof, 2 yellow headlights, 1 minifigure with a hat, 1 blue door. "
-            "MISSING: NONE. UNCLEAR: NONE. COMPLETE: YES. CONFIDENCE: HIGH. "
-            "The race car sits on white paper and every listed part is in view.",
-            False,
-        )
-    # --- complete loaders ---
-    for _ in range(10):
-        add(
-            "front-loader",
-            "complete",
-            "PRESENT: 1 yellow bucket, 4 black wheels, 1 black cabin, 1 gray roll bar, 1 yellow body, 1 minifigure. "
-            "MISSING: NONE. UNCLEAR: NONE. COMPLETE: YES. CONFIDENCE: HIGH. "
-            "The loader is assembled and the bucket is attached at the front.",
-            False,
-        )
-    # --- salient missing wheels (race car) ---
+    for _ in range(12):
+        add("warehouse-aisle", "complete", _COMPLETE, False)
+    for _ in range(8):
+        add("warehouse-aisle", "missing-person-gap", _MISSING_GAP, True)
     for _ in range(5):
-        add(
-            "race-car",
-            "missing-wheels",
-            "PRESENT: 1 clear windshield, 1 red roof, 2 yellow headlights, 1 minifigure with a hat, 1 blue door. "
-            "MISSING: 4 black wheels. UNCLEAR: NONE. COMPLETE: NO. CONFIDENCE: HIGH. "
-            "The chassis sits flat on the paper with axle holes empty and no wheels attached.",
-            True,
-        )
-    # --- salient missing roof ---
+        add("warehouse-aisle", "missing-walkway", _MISSING_WALKWAY, True)
+    for _ in range(4):
+        add("warehouse-aisle", "missing-travel-lane", _MISSING_LANE, True)
     for _ in range(3):
-        add(
-            "race-car",
-            "missing-roof",
-            "PRESENT: 4 black wheels, 1 clear windshield, 2 yellow headlights, 1 minifigure with a hat, 1 blue door. "
-            "MISSING: 1 red roof. UNCLEAR: NONE. COMPLETE: NO. CONFIDENCE: HIGH. "
-            "The cabin is open from above; the red roof brick is not on the car.",
-            True,
-        )
-    # --- salient missing bucket ---
+        add("warehouse-aisle", "missing-path", _MISSING_LANE, True)
+    for _ in range(5):
+        add("warehouse-aisle", "hidden-gap", _HIDDEN_GAP, True)
     for _ in range(3):
-        add(
-            "front-loader",
-            "missing-bucket",
-            "PRESENT: 4 black wheels, 1 black cabin, 1 gray roll bar, 1 yellow body, 1 minifigure. "
-            "MISSING: 1 yellow bucket. UNCLEAR: NONE. COMPLETE: NO. CONFIDENCE: HIGH. "
-            "The front arms end in empty pins; the yellow bucket is not attached.",
-            True,
-        )
-    # --- salient missing minifig ---
-    for _ in range(3):
-        add(
-            "race-car",
-            "missing-minifig",
-            "PRESENT: 4 black wheels, 1 clear windshield, 1 red roof, 2 yellow headlights, 1 blue door. "
-            "MISSING: 1 minifigure with a hat. UNCLEAR: NONE. COMPLETE: NO. CONFIDENCE: HIGH. "
-            "The driver's seat is empty; no minifigure is in the cabin.",
-            True,
-        )
-    # --- subtle: far-side door, VLM says complete (human should FAIL) ---
-    for _ in range(3):
-        add(
-            "race-car",
-            "hidden-door",
-            "PRESENT: 4 black wheels, 1 clear windshield, 1 red roof, 2 yellow headlights, 1 minifigure with a hat. "
-            "MISSING: NONE. UNCLEAR: 1 blue door. COMPLETE: YES. CONFIDENCE: LOW. "
-            "The far side of the cabin is turned away from the camera so the door cannot be verified.",
-            True,
-        )
-    # --- occlusion: hands in frame ---
-    for _ in range(3):
-        add(
-            "front-loader",
-            "hands",
-            "PRESENT: 4 black wheels, 1 yellow body. "
-            "MISSING: NONE. UNCLEAR: 1 yellow bucket, 1 black cabin, 1 gray roll bar, 1 minifigure. "
-            "COMPLETE: YES. CONFIDENCE: LOW. "
-            "A person's hands cover the front of the loader so several parts cannot be seen.",
-            True,
-            occlusion=True,
-        )
+        add("warehouse-aisle", "view-blocked", _VIEW_BLOCKED, True, occlusion=True)
     return out

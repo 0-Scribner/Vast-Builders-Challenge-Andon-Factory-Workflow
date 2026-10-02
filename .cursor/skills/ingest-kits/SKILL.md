@@ -1,84 +1,62 @@
 ---
 name: ingest-kits
 description: >-
-  Upload Bryce's LEGO kit phone clips into the team VSS instance with the
-  kit bill-of-materials custom_prompt, tags, and camera metadata. Use when
-  the team has filmed race-car or front-loader kits and wants them indexed,
-  or says "upload the lego videos", "ingest kits", "custom prompt for kits".
+  Re-ingest the official provided Pack C warehouse clips
+  (sdg_warehouse_cam-2) with the warehouse-aisle bill-of-materials
+  custom_prompt, or upload optional own kit-<id>_unit-NNN.mp4 files.
+  Use when the team says "reingest warehouse", "pack C", "provided
+  videos", "upload the lego videos", "ingest kits".
 ---
 
-# Ingest LEGO kit clips
+# Ingest provided Pack C clips (and optional own kits)
 
-Own footage is allowed. Internet / YouTube video is **not**.
+The judged corpus is **already indexed**. Live path is **re-ingest**, not
+a bulk re-upload. Own LEGO files are optional extras.
 
-## Before any upload
+## Before any re-ingest
 
-1. Confirm with Bryce (or Cosmos) that new uploads are OK if Architecture Reference sounded re-ingest-only.
-2. Read live limits: `GET $INGRESS_URL/api/v1/config` (max_upload_size_mb, often 25).
-3. Clips must be **4.0–4.8 seconds**, kit filling the frame, white background, **no hands**, 1080p not 4K, `.mp4`.
-4. Kit id is `race-car` or `front-loader` (see `tools/scribner/kits.py`). If they filmed a new kit, edit `kits.py` first and regenerate prompts.
-
-## Prompt (must be ≤800 chars)
-
-Generate from code, do not hand-type:
+1. Confirm with Bryce which camera. Prefer Pack C `sdg_warehouse_cam-2`.
+2. Read live limits: `GET $INGRESS_URL/api/v1/metadata/ingest-config`.
+3. Generate the prompt from code (do not hand-type it). Must be ≤800 chars.
 
 ```bash
 cd /path/to/Scribner
-python3 -c "from kits import prompt_for_kit; import sys; sys.path.insert(0,'tools/scribner')"
-PYTHONPATH=tools/scribner python3 -c "from kits import prompt_for_kit; print(prompt_for_kit('race-car')); print(len(prompt_for_kit('race-car')))"
+PYTHONPATH=tools/scribner python3 -c "from kits import prompt_for_kit; p=prompt_for_kit('warehouse-aisle'); print(len(p)); print(p)"
 ```
 
-Use `front-loader` when the clip is that kit. Never send JSON as the prompt — VSS strips JSON from Cosmos output.
+Never send JSON as the prompt — VSS strips JSON from Cosmos output.
 
-## Metadata for every file
+## Metadata for Pack C re-ingest
 
 | Field | Value |
 |-------|--------|
-| `custom_prompt` | `prompt_for_kit(kit_id)` |
-| `tags` | `kit:<kit_id>,unit:<id>,variant:<complete\|missing-wheels\|…>` |
-| `camera_id` | `kit-station-1` |
-| `capture_type` | `general` |
-| `location` | `kit-bench` |
-| `is_public` | `true` |
+| `custom_prompt` | `prompt_for_kit('warehouse-aisle')` |
+| `camera_id` | `sdg_warehouse_cam-2` (omit to preserve) |
+| `capture_type` | `warehouse` if ingest-config allows it, else omit |
+| `location` | `warehouse3` if changing metadata, else omit |
 
-Filename: `kit-<kit_id>_unit-<id>.mp4` e.g. `kit-race-car_unit-014.mp4`.
+Use the challenge repo's `ingest/reingest-videos` skill for the HTTP shape
+(`POST /api/v1/dashboard/reingest`). Scribner's `vss_client.reingest` is a
+thin wrapper. Omit `scenario` when `custom_prompt` is set.
 
-## Upload
+Re-ingest **one clip first**, wait until Explore shows `PRESENT:` in the
+caption, then continue. Designate 1–2 people; do not stampede the GPU queue.
 
-On the workshop VM, credentials are already in the environment (`INGRESS_URL`, `USERNAME`, `PASSWORD` from `/config/<team>.config`, names in the official `config.example`). Use the challenge repo's `ingest/upload-video` skill for the HTTP shape. Scribner's `vss_client.upload_video` is a thin wrapper over that same multipart table (`file`, `is_public`, `tags`, `custom_prompt`, `camera_id`, `capture_type`, `location`; omit `scenario` when `custom_prompt` is set).
+## After re-ingest
 
-```bash
-PYTHONPATH=tools/scribner python3 - <<'PY'
-from pathlib import Path
-from kits import CAMERA_ID, CAPTURE_TYPE, LOCATION, prompt_for_kit
-from vss_client import VssClient
+In Scribner (live mode, `SCRIBNER_MOCK=0`): `POST /api/scan` then open the
+review queue. Default filter is `SCRIBNER_CAMERA_ID=sdg_warehouse_cam-2`.
+Cross-pack: `SCRIBNER_PACK=cross` (search *person close to a moving vehicle*).
 
-client = VssClient()
-kit_id = "race-car"  # or front-loader
-prompt = prompt_for_kit(kit_id)
-folder = Path("/path/to/clips")
-for i, path in enumerate(sorted(folder.glob("*.mp4")), start=1):
-    tags = f"kit:{kit_id},unit:{i:03d},variant:unknown"
-    print(path.name, client.upload_video(
-        str(path),
-        custom_prompt=prompt,
-        tags=tags,
-        camera_id=CAMERA_ID,
-        capture_type=CAPTURE_TYPE,
-        location=LOCATION,
-    ))
-PY
-```
+## Optional own clips
 
-One file per request. After each batch, poll dashboard/explore until `fully_indexed`. Do not claim searchability until Explore shows the clips.
-
-## After ingest
-
-In Scribner (live mode, `SCRIBNER_MOCK=0`): `POST /api/scan` then open the review queue.
+Filename `kit-<kit_id>_unit-<nnn>.mp4` (`race-car` or `front-loader`).
+Use `ingest/upload-video` with `prompt_for_kit(kit_id)`,
+`camera_id=kit-station-1`, `capture_type=general`, `location=kit-bench`.
+Do not YouTube. Do not `git add` mp4s.
 
 ## Agent rules
 
-- Confirm kit_id with Bryce if the filename does not contain `race-car` or `front-loader`.
-- Do not upload if size exceeds `max_upload_size_mb`.
+- Do not guess the target. List Explore rows and match `sdg_warehouse_cam-2`.
 - Do not print JWTs or passwords.
-- Designate 1–2 people for bulk upload; do not stampede the shared GPU queue.
+- Do not rebuild DataEngine or call Docker.

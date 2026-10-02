@@ -253,6 +253,21 @@ class GateFailClosedTests(unittest.TestCase):
         d = decide_one(_unit(inspection=rec, p_fail_prior=0.01), None, {"t_pass": 0.5, "t_fail": 0.9}, audit_fraction=0)
         self.assertEqual(d["decision"], "AUTO_FAIL")
 
+    def test_pack_c_missing_gap_never_auto_pass(self) -> None:
+        cap = (
+            "PRESENT: a pallet-free walkway. MISSING: person-vehicle separation. "
+            "UNCLEAR: NONE. COMPLETE: NO. CONFIDENCE: HIGH."
+        )
+        rec = parse_caption(cap, kit_id="warehouse-aisle")
+        d = decide_one(
+            _unit(inspection=rec, p_fail_prior=0.01),
+            None,
+            {"t_pass": 0.5, "t_fail": 0.9},
+            audit_fraction=0,
+        )
+        self.assertNotEqual(d["decision"], "AUTO_PASS")
+        self.assertEqual(d["decision"], "AUTO_FAIL")
+
 
 class IngestPokaYokeTests(unittest.TestCase):
     def test_youtube_rejected(self) -> None:
@@ -288,6 +303,13 @@ class IngestPokaYokeTests(unittest.TestCase):
         )
         self.assertEqual(kid, "race-car")
         self.assertIn("race-car", kit_ids())
+
+    def test_legal_pack_c_filename_ok(self) -> None:
+        kid = assert_uploadable(
+            "/tmp/kit-warehouse-aisle_unit-014.mp4",
+            prompt_for_kit("warehouse-aisle"),
+        )
+        self.assertEqual(kid, "warehouse-aisle")
 
     def test_upload_fields_drop_scenario_when_custom_prompt_set(self) -> None:
         out = filter_upload_fields(

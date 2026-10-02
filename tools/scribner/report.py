@@ -26,7 +26,7 @@ def render_markdown(units: List[Dict[str, Any]], decisions: List[Dict[str, Any]]
     kits = Counter((u.get("kit_id") or "?") for u in failed)
     variants = Counter((u.get("variant") or "live") for u in failed)
     lines = [
-        "# Scribner kit completeness report",
+        "# Scribner completeness report",
         "",
         f"- Units scanned: **{len(units)}**",
         f"- Verified complete: **{len(passed)}**",

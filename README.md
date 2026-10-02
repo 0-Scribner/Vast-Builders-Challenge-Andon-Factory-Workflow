@@ -1,16 +1,18 @@
 # Scribner
 
-Scribner is a **LEGO kit completeness quality gate** for the [VAST Builders Challenge](https://github.com/vast-data/vast-builders-challenge). Each clip is one kit. Cosmos Reason describes it against a bill of materials. A tiny logistic model, anchored to that prior, auto-passes, auto-fails, or holds for a human. Reviewer labels retrain the model so coverage rises while subtle misses stay in HOLD.
+Scribner is a **completeness quality gate** for the [VAST Builders Challenge](https://github.com/vast-data/vast-builders-challenge) **provided video packs**. Default live corpus is **Pack C** (`sdg_warehouse_cam-2`, ~178 aisle clips). Cosmos Reason describes each clip against a bill of materials. A tiny logistic model, anchored to that prior, auto-passes, auto-fails, or holds for a human. Reviewer labels retrain the model so coverage rises while unclear distance stays in HOLD.
 
-**Pitch (38 words):** Scribner turns a phone clip of a LEGO kit into a pass/fail completeness check. It reads a bill-of-materials caption, holds uncertain units for a human, and learns from those decisions so the next shift needs fewer reviews.
+**Pitch (40 words):** Scribner turns the official warehouse aisle archive into a pass/fail completeness check. It reads a bill-of-materials caption, holds uncertain clips for a human, and learns from those decisions so the next shift reviews fewer aisles.
 
 Agents: read **[AGENTS.md](AGENTS.md)** first, then `.cursor/skills/`.
 
 ## Why this, on this stack
 
-The challenge thesis is *the ingest prompt decides what is searchable*. Scribner makes that prompt a **bill of materials**. YOLO has no LEGO classes (occlusion only). Learning is a prior-anchored logistic regression, not a new detector.
+The challenge thesis is *the ingest prompt decides what is searchable*. Scribner makes that prompt a **bill of materials** (`PRESENT` / `MISSING` / `COMPLETE`) for the footage organizers already indexed. Re-ingest Pack C; do not film LEGO for the judged demo; do not scrape YouTube. YOLO person/hand is occlusion only on optional own clips; on Pack C, people and forklifts are the subject. Learning is a prior-anchored logistic regression, not a new detector.
 
-Own footage is allowed; internet video is not. Shoot 4.0–4.8 s clips, kit filling the frame, white background, no hands. See `.cursor/skills/ingest-kits`.
+The same schema expands to the official cross-pack query *person close to a moving vehicle* (`SCRIBNER_PACK=cross`).
+
+Own `race-car` / `front-loader` clips remain optional extra kits with the same parser.
 
 ## Quick start (mock, no VSS)
 
@@ -29,10 +31,9 @@ PYTHONPATH=tools/scribner python3 scripts/simulate_reviews.py
 
 ## Live (workshop VM)
 
-1. Film kits (`race-car`, `front-loader` — parts in `tools/scribner/kits.py`).
-2. Upload with the BOM prompt (skill `ingest-kits`).
-3. Deploy at `/app` (skill `deploy-scribner`, [deploy/DEPLOY.md](deploy/DEPLOY.md)).
-4. Review HOLD units, hit Retrain, show coverage.
+1. Re-ingest Pack C with the warehouse-aisle BOM prompt (skill `ingest-kits`). Camera `sdg_warehouse_cam-2`.
+2. Deploy at `/app` (skill `deploy-scribner`, [deploy/DEPLOY.md](deploy/DEPLOY.md)).
+3. Review HOLD units (`COMPLETE` / `INCOMPLETE`), hit Retrain, show coverage.
 
 Do not rebuild DataEngine. Do not Docker. Do not demo localhost.
 
@@ -50,16 +51,16 @@ Do not rebuild DataEngine. Do not Docker. Do not demo localhost.
 
 ## Stack named in the demo
 
-VAST S3 + DataEngine + VastDB · NVIDIA Cosmos Reason (captions) · Cosmos Embed1 (index) · YOLO11 (hands/occlusion only) · W&B Inference (optional prior) · Cursor skills · this gate (`numpy` logistic regression).
+VAST S3 + DataEngine + VastDB · NVIDIA Cosmos Reason (captions) · Cosmos Embed1 (index) · YOLO11 (occlusion on own clips) · W&B Inference (optional prior) · Cursor skills · this gate (`numpy` logistic regression). Bound to the official Builders Challenge repo only.
 
 ## 2-minute demo
 
-1. Problem: kit completeness is still a human looking at a tray.
-2. Show a COMPLETE caption vs MISSING: 4 black wheels (prompt = schema).
+1. Problem: aisle completeness (path clear, person-vehicle gap, walkway clear) is still a human scrubbing cameras.
+2. Show a COMPLETE caption vs MISSING: person-vehicle separation (prompt = schema).
 3. Cold start: those auto-decide; UNCLEAR / far-side HOLDs.
 4. Label ~15 HOLDs. Retrain. HOLD band narrows; coverage up.
-5. A hidden-door clip still HOLDs — that is the point of HITL.
-6. Name the stack. Open the markdown report.
+5. An unclear-distance clip still HOLDs — that is the point of HITL.
+6. Name Pack C + the stack. Open the markdown report.
 
 ## Constraints we will not violate
 
@@ -68,3 +69,4 @@ VAST S3 + DataEngine + VastDB · NVIDIA Cosmos Reason (captions) · Cosmos Embed
 - ConfigMap ≲ 1 MiB, no JS build, no sklearn.
 - Ingress path `/app` only (`deployment/deploy-app-no-registry`).
 - Only the official stack: [docs/BUILDERS_STACK.md](docs/BUILDERS_STACK.md). Run `./scripts/run_adversarial.sh`.
+- False PASS is illegal. No AUTO_PASS on inconsistent captions, MISSING parts, LOW confidence, UNCLEAR fields, or occlusion.

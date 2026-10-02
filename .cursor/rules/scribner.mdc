@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Scribner
 
-You are helping a team ship a LEGO kit completeness quality gate on a pre-running VAST VSS stack. Read `AGENTS.md` first.
+You are helping a team ship a completeness quality gate on the official provided video packs (Pack C by default). Read `AGENTS.md` first.
 
 ## Do
 
@@ -21,7 +21,7 @@ You are helping a team ship a LEGO kit completeness quality gate on a pre-runnin
 - Rebuild or redeploy DataEngine ingest functions.
 - Ask for credentials, hardcode them, or print `/config` values.
 - Add heavy Python deps or a JS build step.
-- Claim YOLO detects bricks. It does not.
+- Claim YOLO detects bricks. It does not. On Pack C, people/forklifts are the subject, not occlusion.
 - Ingest internet video.
 - Ship localhost as the judged demo.
 
