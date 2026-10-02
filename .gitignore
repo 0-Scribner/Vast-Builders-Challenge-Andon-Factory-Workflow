@@ -1,0 +1,26 @@
+# Byte-compiled
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local data / generated clips
+/tmp/scribner*
+*.mp4
+
+# Secrets — never commit workshop configs
+.env
+.env.*
+!.env.example
+*.config
+!*.config.example
+
+# Editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+resp.json

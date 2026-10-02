@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scribner — kit completeness gate</title>
+  <style>
+    :root {
+      --bg: #0e141c;
+      --panel: #16202c;
+      --panel-2: #1c2836;
+      --line: #2a3a4e;
+      --text: #e8eef5;
+      --muted: #8aa0b8;
+      --pass: #3dd68c;
+      --fail: #ff6b6b;
+      --hold: #f5c518;
+      --accent: #4da3ff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+      font: 14px/1.45 "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; }
+    header {
+      display: flex; align-items: center; gap: 16px;
+      padding: 12px 20px; border-bottom: 1px solid var(--line);
+      background: #101822;
+    }
+    header h1 { font-size: 16px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0; }
+    header .sub { color: var(--muted); font-size: 12px; }
+    header .sp { flex: 1; }
+    button, select {
+      background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+      border-radius: 6px; padding: 7px 12px; cursor: pointer; font: inherit;
+    }
+    button.primary { background: var(--accent); color: #041018; border-color: transparent; font-weight: 600; }
+    button.pass { background: #163526; color: var(--pass); border-color: #1f5a3c; }
+    button.fail { background: #3a1518; color: var(--fail); border-color: #6b2428; }
+    .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; padding: 12px 20px; }
+    .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+    .kpi b { display: block; font-size: 20px; }
+    .kpi span { color: var(--muted); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .layout { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 12px; padding: 0 20px 20px; min-height: 0; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+    .card h2 { margin: 0 0 10px; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    video { width: 100%; background: #000; border-radius: 8px; max-height: 280px; }
+    .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .chip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .chip.HOLD, .chip.hold { background: #3d3410; color: var(--hold); }
+    .chip.AUTO_PASS, .chip.COMPLETE { background: #143325; color: var(--pass); }
+    .chip.AUTO_FAIL, .chip.INCOMPLETE { background: #3a1518; color: var(--fail); }
+    .caption { font-size: 13px; color: #c9d6e4; background: var(--panel-2); padding: 10px; border-radius: 8px; max-height: 140px; overflow: auto; }
+    .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+    .hint { color: var(--muted); font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+    tr:hover { background: var(--panel-2); cursor: pointer; }
+    .queue-item { padding: 8px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; }
+    .queue-item.active { border-color: var(--accent); }
+    pre { white-space: pre-wrap; font-size: 12px; color: #c9d6e4; }
+    .tabs { display: flex; gap: 6px; padding: 0 20px 8px; }
+    .tabs button.active { background: var(--accent); color: #041018; }
+    .hidden { display: none; }
+    #reportView { padding: 0 20px 20px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Scribner</h1>
+      <div class="sub">Kit completeness gate · human-in-the-loop</div>
+    </div>
+    <div class="sp"></div>
+    <span id="modeChip" class="chip HOLD">…</span>
+    <button onclick="scan()">Scan / reload</button>
+    <button class="primary" onclick="retrain()">Retrain</button>
+  </header>
+  <div class="kpis" id="kpis"></div>
+  <div class="tabs">
+    <button class="active" data-tab="review" onclick="tab('review')">Review</button>
+    <button data-tab="units" onclick="tab('units')">All units</button>
+    <button data-tab="report" onclick="tab('report')">Report</button>
+  </div>
+  <div id="reviewView" class="layout">
+    <div class="card">
+      <h2>Current unit <span id="unitTitle"></span></h2>
+      <video id="player" controls autoplay muted loop playsinline></video>
+      <div class="meta" id="unitMeta"></div>
+      <p class="caption" id="caption"></p>
+      <div class="actions">
+        <button class="pass" onclick="review('COMPLETE')">Complete  (C)</button>
+        <button class="fail" onclick="review('INCOMPLETE')">Incomplete  (I)</button>
+        <select id="reason"></select>
+        <span class="hint">Keyboard: C complete · I incomplete · N next</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Review queue</h2>
+      <div id="queue"></div>
+    </div>
+  </div>
+  <div id="unitsView" class="hidden" style="padding:0 20px 20px">
+    <div class="card"><table id="unitTable"></table></div>
+  </div>
+  <div id="reportView" class="hidden"><div class="card"><pre id="reportMd"></pre></div></div>
+<script>
+const $ = (id) => document.getElementById(id);
+let queue = [];
+let current = null;
+let reasons = [];
+
+function tab(name) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  $('reviewView').classList.toggle('hidden', name !== 'review');
+  $('unitsView').classList.toggle('hidden', name !== 'units');
+  $('reportView').classList.toggle('hidden', name !== 'report');
+  if (name === 'units') loadUnits();
+  if (name === 'report') loadReport();
+}
+
+async function boot() {
+  const kits = await (await fetch('/api/kits')).json();
+  reasons = kits.reasons || [];
+  $('reason').innerHTML = reasons.map(r => `<option value="${r.id}">${r.label}</option>`).join('');
+  await refresh();
+}
+
+async function refresh() {
+  const [m, q, h] = await Promise.all([
+    fetch('/api/metrics').then(r => r.json()),
+    fetch('/api/queue').then(r => r.json()),
+    fetch('/health').then(r => r.json()),
+  ]);
+  $('modeChip').textContent = h.mock ? 'MOCK' : 'LIVE';
+  renderKpis(m.current || {});
+  queue = q.queue || [];
+  renderQueue();
+  if (!current && queue.length) select(queue[0].id);
+  else if (current) {
+    const still = queue.find(u => u.id === current.id);
+    if (!still && queue.length) select(queue[0].id);
+    else if (!still) { current = null; renderUnit(null); }
+  }
+}
+
+function renderKpis(c) {
+  const cells = [
+    ['Coverage', pct(c.coverage)],
+    ['HOLD rate', pct(c.hold_rate)],
+    ['Auto pass', pct(c.auto_pass_rate)],
+    ['Auto fail', pct(c.auto_fail_rate)],
+    ['Labels', String(c.n_labels ?? 0)],
+    ['HOLD band', `${(c.t_pass??0).toFixed(2)}–${(c.t_fail??0).toFixed(2)}`],
+  ];
+  $('kpis').innerHTML = cells.map(([k,v]) => `<div class="kpi"><span>${k}</span><b>${v}</b></div>`).join('');
+}
+function pct(x) { return `${Math.round((x||0)*100)}%`; }
+
+function renderQueue() {
+  $('queue').innerHTML = queue.map(u => {
+    const d = (u.decision_row || {}).decision || 'HOLD';
+    const p = (u.decision_row || {}).p_fail;
+    const active = current && current.id === u.id ? 'active' : '';
+    return `<div class="queue-item ${active}" onclick="select('${u.id}')">
+      <strong>${u.id}</strong> · ${u.kit_id || ''}
+      <span class="chip ${d}">${d}</span>
+      <div class="hint">p_fail=${p} · ${(u.inspection||{}).missing || '—'}</div>
+    </div>`;
+  }).join('') || '<p class="hint">Queue empty. Scan, or every HOLD has been labeled.</p>';
+}
+
+async function select(id) {
+  current = await (await fetch('/api/units/' + id)).json();
+  renderQueue();
+  renderUnit(current);
+}
+
+function renderUnit(u) {
+  if (!u) {
+    $('unitTitle').textContent = '';
+    $('unitMeta').innerHTML = '';
+    $('caption').textContent = 'Nothing in queue.';
+    $('player').removeAttribute('src');
+    return;
+  }
+  const d = u.decision_row || {};
+  const insp = u.inspection || {};
+  $('unitTitle').textContent = '· ' + u.id;
+  $('player').src = '/clip?unit_id=' + encodeURIComponent(u.id) + '&source=' + encodeURIComponent(u.source || '');
+  $('caption').textContent = u.caption || '';
+  $('unitMeta').innerHTML = [
+    chip('decision', d.decision),
+    kv('p_fail', d.p_fail),
+    kv('prior', (u.prior || {}).p_fail_prior),
+    kv('kit', u.kit_id),
+    kv('complete', String(insp.complete)),
+    kv('confidence', insp.confidence),
+    kv('missing', (insp.missing || []).join(', ') || 'NONE'),
+    kv('unclear', (insp.unclear || []).join(', ') || 'NONE'),
+  ].join('');
+}
+function kv(k, v) { return `<div><span class="hint">${k}</span><div>${v ?? '—'}</div></div>`; }
+function chip(k, v) { return `<div><span class="hint">${k}</span><div><span class="chip ${v||''}">${v||'—'}</span></div></div>`; }
+
+async function review(verdict) {
+  if (!current) return;
+  await fetch('/api/review', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      unit_id: current.id,
+      verdict,
+      reason: $('reason').value,
+    }),
+  });
+  current = null;
+  await refresh();
+}
+
+async function retrain() {
+  await fetch('/api/retrain', { method: 'POST' });
+  await refresh();
+}
+async function scan() {
+  await fetch('/api/scan', { method: 'POST' });
+  current = null;
+  await refresh();
+}
+
+async function loadUnits() {
+  const data = await (await fetch('/api/units')).json();
+  const rows = data.units || [];
+  $('unitTable').innerHTML = `<tr><th>id</th><th>kit</th><th>variant</th><th>gate</th><th>p_fail</th><th>label</th><th>missing</th></tr>` +
+    rows.map(u => {
+      const d = u.decision || {};
+      const lab = u.label || {};
+      return `<tr onclick="tab('review'); select('${u.id}')">
+        <td>${u.id}</td><td>${u.kit_id||''}</td><td>${u.variant||''}</td>
+        <td><span class="chip ${d.decision||''}">${d.decision||''}</span></td>
+        <td>${d.p_fail ?? ''}</td>
+        <td>${lab.verdict || ''}</td>
+        <td>${(u.inspection && u.inspection.missing || []).join(', ')}</td>
+      </tr>`;
+    }).join('');
+}
+
+async function loadReport() {
+  $('reportMd').textContent = await (await fetch('/api/report')).text();
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'c' || e.key === 'C') review('COMPLETE');
+  if (e.key === 'i' || e.key === 'I') review('INCOMPLETE');
+  if (e.key === 'n' || e.key === 'N') {
+    if (!queue.length) return;
+    const idx = Math.max(0, queue.findIndex(u => current && u.id === current.id));
+    select(queue[(idx + 1) % queue.length].id);
+  }
+});
+
+boot().catch(err => { $('caption').textContent = String(err); });
+</script>
+</body>
+</html>

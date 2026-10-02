@@ -1,0 +1,14 @@
+---
+description: How to write a handoff when Josh asks for one. Use this whenever the user says handoff, agent-first handoff, or "give this to the other agent".
+alwaysApply: true
+---
+
+# Handoffs are agent-first
+
+When Josh asks for a handoff, do **not** write a human narrative or a bloggy procedure. Write a document another coding agent can execute with no back-and-forth.
+
+Follow `.cursor/handoffs/TEMPLATE.md` exactly. Save the instance under `.cursor/handoffs/<slug>.md` and, if it is an operational loop, also as a skill in `.cursor/skills/<slug>/SKILL.md`.
+
+Required sections, in this order: Receiver, Done when, Context (≤8 lines), Never, Inputs, Procedure (numbered, copy-pasteable), Verification, Report back, Stop and escalate.
+
+Do not tell the receiving agent to "ask the user" for anything that is already in `kits.py`, `/config`, or this repo. Do not print secrets. Do not include slides.

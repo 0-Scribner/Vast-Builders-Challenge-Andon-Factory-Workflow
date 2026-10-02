@@ -1,0 +1,8 @@
+# Generated from tools/scribner/kits.py — do not hand-edit.
+# Each CUSTOM PROMPT body is ≤800 characters.
+
+## kit_id=race-car  chars=587
+This clip shows a small LEGO build called race-car (Race Car). A complete build has: 4 black wheels, 1 clear windshield, 1 red roof, 2 yellow headlights, 1 minifigure with a hat, 1 blue door. Look at the build from every visible side. Write one paragraph in this exact order: PRESENT: the listed parts you clearly see; MISSING: the listed parts that are absent, or NONE; UNCLEAR: parts you cannot verify; COMPLETE: YES or NO; CONFIDENCE: HIGH, MEDIUM, or LOW; then one sentence on where any gap is. Count only what is clearly visible; never assume a part is present because it should be.
+
+## kit_id=front-loader  chars=582
+This clip shows a small LEGO build called front-loader (Front Loader). A complete build has: 1 yellow bucket, 4 black wheels, 1 black cabin, 1 gray roll bar, 1 yellow body, 1 minifigure. Look at the build from every visible side. Write one paragraph in this exact order: PRESENT: the listed parts you clearly see; MISSING: the listed parts that are absent, or NONE; UNCLEAR: parts you cannot verify; COMPLETE: YES or NO; CONFIDENCE: HIGH, MEDIUM, or LOW; then one sentence on where any gap is. Count only what is clearly visible; never assume a part is present because it should be.
