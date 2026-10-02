@@ -32,7 +32,7 @@ def main() -> None:
         raise SystemExit(f"FAIL CLOSED: no exact {PACK_C_CAMERA}/{PACK_C_LOCATION} in Explore")
 
     pack_sources = {s for p in pack_c for s in timeline_sources(p)}
-    search = client.search(PAYOFF_QUERY, top_k=50, llm_top_n=0, min_similarity=0.3)
+    search = client.search(PAYOFF_QUERY, top_k=50, min_similarity=0.3)
     hits = search.get("results") or search.get("chunk_results") or []
     verified_hits = 0
     for hit in hits:

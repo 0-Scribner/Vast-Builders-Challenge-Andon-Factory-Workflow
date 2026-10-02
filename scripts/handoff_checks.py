@@ -153,7 +153,7 @@ def vss_checks(results, env):
 
     def search():
         rows = search_hits(json_request("POST", base + "/api/v1/search", headers=headers,
-            json={"query": QUERY, "top_k": 5, "llm_top_n": 0, "min_similarity": 0.3,
+            json={"query": QUERY, "top_k": 5, "min_similarity": 0.3,
                   "include_public": True, "metadata_filters": {"camera_id": CAMERA}}))
         require(ok, "pack_c_inventory_unverified")
         sources = set()

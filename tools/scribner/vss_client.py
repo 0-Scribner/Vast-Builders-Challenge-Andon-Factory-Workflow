@@ -231,7 +231,7 @@ class VssClient:
         return payload
 
     def search(self, query: str, **body: Any) -> Dict[str, Any]:
-        payload = {"query": query, "top_k": 50, "llm_top_n": 0, "include_public": True}
+        payload = {"query": query, "top_k": 50, "include_public": True}
         payload.update(body)
         r = self._post("/api/v1/search", json=payload)
         r.raise_for_status()

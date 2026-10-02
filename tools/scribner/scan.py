@@ -80,7 +80,7 @@ def scan_live(client: Optional[VssClient] = None) -> List[Dict[str, Any]]:
 
 def _search_hits(client: VssClient) -> List[Dict[str, Any]]:
     try:
-        body = client.search(config.SEARCH_QUERY, top_k=50, llm_top_n=0, min_similarity=0.3)
+        body = client.search(config.SEARCH_QUERY, top_k=50, min_similarity=0.3)
     except Exception:
         return []
     rows = body.get("results") or body.get("chunk_results") or []
