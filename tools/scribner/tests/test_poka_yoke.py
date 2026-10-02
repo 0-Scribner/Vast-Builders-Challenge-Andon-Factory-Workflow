@@ -163,7 +163,10 @@ class HttpAdversarialTests(unittest.TestCase):
         self.assertIn("andon", blob)
         self.assertFalse(body["stack"]["canary_wired"])
         self.assertNotIn("166.19.38.112", blob)
-        self.assertNotIn("/api/v1/reports", blob)
+        self.assertIn("/api/v1/reports", body["stack"]["forbidden_vss_paths"])
+        from builders_stack import scan_scribner_violations
+
+        self.assertEqual(scan_scribner_violations(), [])
 
     def test_http_gate_ok_on_hold_is_400(self) -> None:
         q = self.client.get("/api/queue").json()["queue"]
