@@ -60,6 +60,8 @@ Do not rebuild DataEngine. Do not Docker. Do not demo localhost.
 | `AGENTS.md` | Operating manual for Cursor / Bryce |
 | [docs/PLAN.md](docs/PLAN.md) | Primary vs Plan B |
 | [docs/BUILDERS_STACK.md](docs/BUILDERS_STACK.md) | Official challenge repo contract |
+| [docs/Scribner-Andon-Implementation.pdf](docs/Scribner-Andon-Implementation.pdf) | 16:9 slide deck of the andon implementation |
+| `docs/deck/build_andon_deck.py` | Regenerates the deck (reportlab, not a ConfigMap dep) |
 | `tools/scribner/` | App (flat imports — this dir is the ConfigMap) |
 | `tools/scribner/kits.py` | Scene schema (source of truth) |
 | `prompts/warehouse_near_miss_v1.txt` | Generated ingest prompts (≤800 chars) |
