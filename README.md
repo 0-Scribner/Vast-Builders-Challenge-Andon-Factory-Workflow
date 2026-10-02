@@ -41,6 +41,7 @@ Do not rebuild DataEngine. Do not Docker. Do not demo localhost.
 | Path | Role |
 |------|------|
 | `AGENTS.md` | Operating manual for Cursor / Bryce |
+| [docs/BUILDERS_STACK.md](docs/BUILDERS_STACK.md) | Official challenge repo contract |
 | `tools/scribner/` | App (flat imports — this dir is the ConfigMap) |
 | `tools/scribner/kits.py` | Bills of materials (source of truth) |
 | `prompts/kit_completeness_v1.txt` | Generated ingest prompts (≤800 chars) |
@@ -63,6 +64,7 @@ VAST S3 + DataEngine + VastDB · NVIDIA Cosmos Reason (captions) · Cosmos Embed
 ## Constraints we will not violate
 
 - Cosmos captions are plain prose (JSON is stripped). Parser expects `PRESENT:` / `MISSING:` / `UNCLEAR:` / `COMPLETE:` / `CONFIDENCE:`.
-- Custom prompt ≤800 characters.
+- Custom prompt ≤800 characters (`GET /api/v1/metadata/ingest-config`).
 - ConfigMap ≲ 1 MiB, no JS build, no sklearn.
-- Ingress path `/app` only.
+- Ingress path `/app` only (`deployment/deploy-app-no-registry`).
+- Only the official stack: [docs/BUILDERS_STACK.md](docs/BUILDERS_STACK.md). Run `./scripts/run_adversarial.sh`.

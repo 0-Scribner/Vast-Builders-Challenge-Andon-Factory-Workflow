@@ -17,6 +17,4 @@ False PASS (incomplete kit marked complete / AUTO_PASS) is the red-line failure.
 
 ## Adversarial review (every change)
 
-Before you commit: run attacks that should fail closed (false PASS, illegal operator POST, bad filename, 801-char prompt, YouTube path). Record them in `.cursor/adversarial/` with Attack / Expected / Result / Fix. If an attack succeeds, fix it before any other work. Happy-path tests alone are not enough.
-
-Do not ask Bryce to invent these attacks; use the list in `.cursor/handoffs/chatgpt-cowork.md` and extend it when you add a surface.
+Before you commit: run attacks that should fail closed (false PASS, illegal operator POST, bad filename, 801-char prompt, YouTube path, invented VSS routes, Canary wiring, hardcoded GPU host). Clone https://github.com/vast-data/vast-builders-challenge and run `./scripts/run_adversarial.sh`. Record results in `.cursor/adversarial/` with Attack / Expected / Result / Fix. If an attack succeeds, fix it before any other work. Happy-path tests alone are not enough.

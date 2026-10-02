@@ -9,11 +9,12 @@ You are helping a team ship a LEGO kit completeness quality gate on a pre-runnin
 
 ## Do
 
-- Use skills in `.cursor/skills/` before raw REST.
+- Use skills in `.cursor/skills/` before raw REST. For VSS, prefer the challenge repo skills (`ingest/upload-video`, `retrieval/*`, `gpu/*`, `deployment/deploy-app-no-registry`) over inventing curl.
 - Keep learning in `learn.py` as numpy-only logistic regression anchored to the VLM prior (`w0` puts weight 1 on `prior_logit`).
 - Treat `tools/scribner/kits.py` as the single source of truth for bills of materials. After editing kits, rewrite `prompts/kit_completeness_v1.txt` from `prompt_for_kit()` and confirm each prompt is ≤800 characters.
 - Persist labels and scorer versions through `store.py`. Never lose reviewer decisions on restart if the data dir is set.
 - Build a web app. Deploy on Kubernetes at path `/app` using `deploy-scribner`.
+- Bind env/APIs to `docs/BUILDERS_STACK.md`. Run `./scripts/run_adversarial.sh` after stack-touching changes.
 
 ## Do not
 

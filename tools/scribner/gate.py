@@ -12,6 +12,29 @@ from typing import Any, Dict, List, Optional, Sequence
 from learn import coverage_stats, predict_p_fail
 
 
+def pass_blocked(unit: Dict[str, Any]) -> str:
+    """Why AUTO_PASS is illegal for this unit, or '' if a pass is allowed.
+
+    False PASS (incomplete kit marked complete) is the red-line failure.
+    """
+    insp = unit.get("inspection") or {}
+    if insp.get("inconsistent"):
+        return "inconsistent_caption"
+    if insp.get("missing"):
+        return "missing_parts"
+    if insp.get("complete") is False:
+        return "complete_no"
+    if insp.get("confidence") == "low":
+        return "confidence_low"
+    if insp.get("unclear"):
+        return "unclear_parts"
+    if unit.get("occlusion"):
+        return "occlusion"
+    if insp.get("complete") is None:
+        return "complete_unknown"
+    return ""
+
+
 def decide_one(
     unit: Dict[str, Any],
     scorer: Optional[Dict[str, Any]],
@@ -29,6 +52,16 @@ def decide_one(
     else:
         decision = "HOLD"
 
+    closed = ""
+    if decision == "AUTO_PASS":
+        closed = pass_blocked(unit)
+        if closed:
+            insp = unit.get("inspection") or {}
+            if insp.get("missing") or insp.get("complete") is False:
+                decision = "AUTO_FAIL"
+            else:
+                decision = "HOLD"
+
     audit = False
     if decision != "HOLD" and _stable_rand(unit.get("id", "")) < audit_fraction:
         audit = True
@@ -43,6 +76,7 @@ def decide_one(
         "audit": audit,
         "kit_id": unit.get("kit_id"),
         "scorer_n": (scorer or {}).get("n", 0),
+        "fail_closed": closed or None,
     }
 
 

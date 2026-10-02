@@ -1,0 +1,19 @@
+---
+description: Bind Scribner to the official vast-builders-challenge stack only. Always apply.
+alwaysApply: true
+---
+
+# Official Builders Stack
+
+The only allowed infrastructure is https://github.com/vast-data/vast-builders-challenge
+(`config.example`, `BUILD_DAY.md`, `ARCHITECTURE_REFERENCE.md`, `.cursor/skills`).
+
+- Credentials: `/config/<team>.config` names from `config.example`. Deploy aliases `VSS_URL` / `VSS_USERNAME` / `VSS_PASSWORD` only.
+- Call matching challenge skills before raw REST (`ingest/upload-video`, `retrieval/*`, `gpu/*`, `deployment/deploy-app-no-registry`).
+- VSS routes: only those skills. Never `/reports`, `/alerts`, `/analytics`, `/videos/ask`, `/tags`, `/locations`, `/extra-metadata`.
+- GPU: `$COSMOS3_REASON_URL`, `$YOLO_URL`, `$COSMOS_EMBED1_URL` (+ optional `$GPU_BEARER_TOKEN`). Never hardcode a host. Never wire Canary into the kit gate.
+- Deploy: ConfigMap + `python:3.12-slim` + Ingress `/app`. No Docker. No localhost as the judged demo.
+- Ingest: own footage via upload-video; `custom_prompt` ≤800; omit `scenario` when a custom prompt is set. No YouTube.
+- After stack-touching edits run `./scripts/run_adversarial.sh` and file `.cursor/adversarial/`.
+
+Details: `docs/BUILDERS_STACK.md`, `tools/scribner/builders_stack.py`.

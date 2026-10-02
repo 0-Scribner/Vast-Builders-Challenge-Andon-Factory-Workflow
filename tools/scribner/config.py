@@ -1,14 +1,20 @@
 """Environment and paths.
 
-Agent note: credentials come from the process environment (K8s Secret or
-``/config/<team>.config`` sourced on the VM). Never interpolate secret
-values into logs, HTML, or git.
+Credentials come from the process environment: workshop
+``/config/<team>.config`` (names in vast-builders-challenge
+``config.example``) or the deploy-app-no-registry Secret aliases
+``VSS_URL`` / ``VSS_USERNAME`` / ``VSS_PASSWORD``.
+
+Never interpolate secret values into logs, HTML, or git. List env
+**names** with ``env | cut -d= -f1 | sort``. Never run bare ``env``.
 """
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
+
+from builders_stack import WANDB_INFERENCE_DEFAULT
 
 
 def _truthy(name: str, default: str = "0") -> bool:
@@ -22,7 +28,7 @@ MOCK = _truthy("SCRIBNER_MOCK", "0")
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", os.environ.get("SCRIBNER_PORT", "8080")))
 
-# VSS backend. Prefer the names the deploy skill injects.
+# VSS backend. Prefer deploy-skill Secret aliases, then config.example names.
 VSS_URL = (
     os.environ.get("VSS_URL")
     or os.environ.get("INGRESS_URL")
@@ -31,21 +37,23 @@ VSS_URL = (
 VSS_USERNAME = os.environ.get("VSS_USERNAME") or os.environ.get("USERNAME") or ""
 VSS_PASSWORD = os.environ.get("VSS_PASSWORD") or os.environ.get("PASSWORD") or ""
 
-# Optional GPU NIMs (embeddings / re-interrogation). Missing is OK.
+# GPU NIMs from config.example. Each has its own host:port; do not derive one
+# from another. Optional GPU_BEARER_TOKEN is documented in gpu/ skills.
 COSMOS3_REASON_URL = os.environ.get("COSMOS3_REASON_URL", "").rstrip("/")
+YOLO_URL = os.environ.get("YOLO_URL", "").rstrip("/")
 COSMOS_EMBED1_URL = os.environ.get("COSMOS_EMBED1_URL", "").rstrip("/")
+COSMOS3_REASON_MODEL = os.environ.get("COSMOS3_REASON_MODEL", "nvidia/cosmos3-reason")
+COSMOS_EMBED1_MODEL = os.environ.get("COSMOS_EMBED1_MODEL", "nvidia/cosmos-embed1")
 GPU_BEARER_TOKEN = os.environ.get("GPU_BEARER_TOKEN", "")
+# Documented on the stack; Scribner never calls it (optional ASR, kits are silent).
+CANARY_1B_URL = os.environ.get("CANARY_1B_URL", "").rstrip("/")
 
-# W&B serverless inference (optional prior). Missing is OK — heuristic prior kicks in.
+# W&B serverless inference (BUILD_DAY.md). Missing is OK — heuristic prior kicks in.
 WANDB_API_KEY = os.environ.get("WANDB_API_KEY", "")
 WANDB_TEAM = os.environ.get("WANDB_TEAM", "")
 WANDB_PROJECT = os.environ.get("WANDB_PROJECT", "")
 SCRIBNER_MODEL = os.environ.get("SCRIBNER_MODEL", "meta-llama/Llama-3.1-8B-Instruct")
-WANDB_INFERENCE_URL = os.environ.get(
-    "WANDB_INFERENCE_URL", "https://api.inference.wandb.ai/v1"
-)
-
-SCRIBNER_WEBHOOK_URL = os.environ.get("SCRIBNER_WEBHOOK_URL", "")
+WANDB_INFERENCE_URL = os.environ.get("WANDB_INFERENCE_URL", WANDB_INFERENCE_DEFAULT)
 
 # Gate knobs. Demo-scale epsilon is looser than production on purpose.
 AUDIT_FRACTION = float(os.environ.get("SCRIBNER_AUDIT_FRACTION", "0.10"))

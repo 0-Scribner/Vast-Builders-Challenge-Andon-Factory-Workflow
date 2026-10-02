@@ -120,9 +120,18 @@ class LoopTests(unittest.TestCase):
         gated = self.state.run_gate()
         cold = gated["metrics"]["coverage"]
         # Review every unit with ground truth (oracle human).
+        decisions = {d["unit_id"]: d for d in self.state.store.load_decisions()}
         for u in self.state.store.load_units():
             verdict = "INCOMPLETE" if u["true_incomplete"] else "COMPLETE"
-            self.state.review(u["id"], verdict, reason="agree")
+            auto = (decisions.get(u["id"]) or {}).get("decision") or "HOLD"
+            kwargs: dict = {}
+            reason = "agree"
+            if auto == "AUTO_PASS" and verdict == "INCOMPLETE":
+                reason = "vlm_missed_part"
+            elif auto == "AUTO_FAIL" and verdict == "COMPLETE":
+                reason = "vlm_false_missing"
+                kwargs["confirm_escape"] = True
+            self.state.review(u["id"], verdict, reason=reason, **kwargs)
         result = self.state.retrain()
         warm = result["metrics"]["coverage"]
         self.assertGreaterEqual(warm, cold)

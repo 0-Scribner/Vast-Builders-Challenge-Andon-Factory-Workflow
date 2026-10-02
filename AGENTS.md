@@ -6,6 +6,8 @@ When Bryce asks for a **handoff**, write it agent-first using `.cursor/handoffs/
 
 Scribner is the app in `tools/scribner/`. The VSS ingest/search stack is **already running** on the workshop VM. Do not rebuild it. Do not redeploy DataEngine functions. Do not call `docker`.
 
+**Stack lock:** https://github.com/vast-data/vast-builders-challenge is the only allowed infrastructure. Env names from that repo's `config.example`. HTTP only against routes in its `.cursor/skills` (`retrieval/*`, `ingest/upload-video`, `ingest/reingest-*`, `gpu/*`, `deployment/deploy-app-no-registry`). Details: `docs/BUILDERS_STACK.md`. After any stack-touching edit: `./scripts/run_adversarial.sh`.
+
 ## What this product is
 
 Each uploaded clip is one kit unit. Cosmos Reason describes the clip using a **bill-of-materials prompt**. Scribner parses that description, scores `p_fail` (probability the kit is incomplete), and decides:
@@ -19,7 +21,7 @@ A reviewer marks COMPLETE or INCOMPLETE. Those labels retrain a tiny logistic re
 ## First actions on a new session
 
 1. `SCRIBNER_MOCK=1 python3 tools/scribner/main.py` — prove the loop locally.
-2. `python3 -m unittest discover -s tools/scribner/tests -v` — prove parser, scorer, gate.
+2. `BUILDERS_CHALLENGE_DIR=/tmp/vast-builders-challenge ./scripts/run_adversarial.sh` — prove official-stack conformance + poka-yoke.
 3. On the workshop VM only: source `/config/<team>.config`, unset mock, deploy with `.cursor/skills/deploy-scribner/SKILL.md`.
 
 Never print, log, or commit values from `/config/*.config`. List env **names** with `env | cut -d= -f1 | sort`. Never run bare `env`.
@@ -48,9 +50,10 @@ Do not add `sklearn`, `scipy`, `torch`, frontend bundlers, or `node_modules`. Th
 Skills live in `.cursor/skills/`. Load the matching skill **before** writing curl by hand.
 
 - `run-mock` — local end-to-end without VSS
-- `ingest-kits` — upload phone clips with the BOM prompt
+- `conformance-stack` — clone the official challenge repo and run adversarial tests
+- `ingest-kits` — upload phone clips with the BOM prompt (`ingest/upload-video` field contract)
 - `review-retrain` — drive the HITL loop
-- `deploy-scribner` — K8s `/app` (no Docker)
+- `deploy-scribner` — K8s `/app` (no Docker; `deployment/deploy-app-no-registry`)
 
 ## Constraints that fail a demo if ignored
 
@@ -68,4 +71,4 @@ Skills live in `.cursor/skills/`. Load the matching skill **before** writing cur
 3. Gate HOLDs most units at cold start.
 4. Review ~15 units (keyboard `C` / `I`).
 5. Retrain. Coverage rises; salient misses AUTO_FAIL; tiny hidden bricks stay HOLD.
-6. Name the stack: VAST S3 + DataEngine + VastDB, Cosmos Reason + Embed1, YOLO (occlusion), W&B Inference (optional prior), Cursor, this gate.
+6. Name the stack: VAST S3 + DataEngine + VastDB, Cosmos Reason + Embed1, YOLO (occlusion), W&B Inference (optional prior), Cursor, this gate — all from the official Builders Challenge repo, nothing else.

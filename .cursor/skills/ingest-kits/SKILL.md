@@ -45,7 +45,7 @@ Filename: `kit-<kit_id>_unit-<id>.mp4` e.g. `kit-race-car_unit-014.mp4`.
 
 ## Upload
 
-On the workshop VM, credentials are already in the environment (`INGRESS_URL`, `USERNAME`, `PASSWORD`). Use the challenge repo's `ingest/upload-video` skill **or** Scribner's client:
+On the workshop VM, credentials are already in the environment (`INGRESS_URL`, `USERNAME`, `PASSWORD` from `/config/<team>.config`, names in the official `config.example`). Use the challenge repo's `ingest/upload-video` skill for the HTTP shape. Scribner's `vss_client.upload_video` is a thin wrapper over that same multipart table (`file`, `is_public`, `tags`, `custom_prompt`, `camera_id`, `capture_type`, `location`; omit `scenario` when `custom_prompt` is set).
 
 ```bash
 PYTHONPATH=tools/scribner python3 - <<'PY'

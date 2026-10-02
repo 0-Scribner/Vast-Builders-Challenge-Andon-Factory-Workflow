@@ -49,6 +49,7 @@ def parse_caption(text: str, kit_id: Optional[str] = None) -> Dict[str, Any]:
                 matched_present.append(pid)
 
     parsed = bool(spans)
+    inconsistent = bool(complete is True and missing)
     return {
         "raw": raw,
         "parsed": parsed,
@@ -60,6 +61,7 @@ def parse_caption(text: str, kit_id: Optional[str] = None) -> Dict[str, Any]:
         "part_ids_missing": matched_missing,
         "part_ids_present": matched_present,
         "kit_id": kit_id,
+        "inconsistent": inconsistent,
     }
 
 

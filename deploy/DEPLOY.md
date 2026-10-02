@@ -72,9 +72,12 @@ kubectl -n "$NS" create secret generic "${APP_NAME}-vss-creds" \
   --from-literal=WANDB_PROJECT="${WANDB_PROJECT:-}" \
   --from-literal=GPU_BEARER_TOKEN="${GPU_BEARER_TOKEN:-}" \
   --from-literal=COSMOS3_REASON_URL="${COSMOS3_REASON_URL:-}" \
+  --from-literal=YOLO_URL="${YOLO_URL:-}" \
   --from-literal=COSMOS_EMBED1_URL="${COSMOS_EMBED1_URL:-}" \
-  --from-literal=SCRIBNER_WEBHOOK_URL="${SCRIBNER_WEBHOOK_URL:-}" \
+  --from-literal=COSMOS3_REASON_MODEL="${COSMOS3_REASON_MODEL:-nvidia/cosmos3-reason}" \
+  --from-literal=COSMOS_EMBED1_MODEL="${COSMOS_EMBED1_MODEL:-nvidia/cosmos-embed1}" \
   --dry-run=client -o yaml | kubectl apply -f -
+# Do not inject CANARY_1B_URL. Canary is optional ASR and is not wired.
 ```
 
 ## 4. Deployment + Service + Ingress
@@ -123,6 +126,18 @@ spec:
           valueFrom: { secretKeyRef: { name: ${APP_NAME}-vss-creds, key: WANDB_TEAM } }
         - name: WANDB_PROJECT
           valueFrom: { secretKeyRef: { name: ${APP_NAME}-vss-creds, key: WANDB_PROJECT } }
+        - name: GPU_BEARER_TOKEN
+          valueFrom: { secretKeyRef: { name: ${APP_NAME}-vss-creds, key: GPU_BEARER_TOKEN } }
+        - name: COSMOS3_REASON_URL
+          valueFrom: { secretKeyRef: { name: ${APP_NAME}-vss-creds, key: COSMOS3_REASON_URL } }
+        - name: YOLO_URL
+          valueFrom: { secretKeyRef: { name: ${APP_NAME}-vss-creds, key: YOLO_URL } }
+        - name: COSMOS_EMBED1_URL
+          valueFrom: { secretKeyRef: { name: ${APP_NAME}-vss-creds, key: COSMOS_EMBED1_URL } }
+        - name: COSMOS3_REASON_MODEL
+          valueFrom: { secretKeyRef: { name: ${APP_NAME}-vss-creds, key: COSMOS3_REASON_MODEL } }
+        - name: COSMOS_EMBED1_MODEL
+          valueFrom: { secretKeyRef: { name: ${APP_NAME}-vss-creds, key: COSMOS_EMBED1_MODEL } }
         volumeMounts:
         - name: code
           mountPath: /code

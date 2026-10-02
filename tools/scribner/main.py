@@ -32,7 +32,9 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 from pydantic import BaseModel, Field
 
+import builders_stack
 import config
+from gpu_client import available as gpu_available
 from kits import CAMERA_ID, KITS, LOCATION, REASON_CODES, kit_ids, prompt_for_kit
 from report import render_markdown
 from state import AppState
@@ -60,6 +62,8 @@ class ReviewBody(BaseModel):
     verdict: str = Field(..., description="COMPLETE or INCOMPLETE (aliases: C/I, PASS/FAIL)")
     reason: str = "agree"
     notes: str = ""
+    gate_ok: bool | None = None
+    confirm_escape: bool = False
 
 
 @app.get("/health")
@@ -69,6 +73,8 @@ def health() -> Dict[str, Any]:
         "mock": state.mock,
         "kits": kit_ids(),
         "store": state.store.state_summary(),
+        "stack": builders_stack.health_snapshot(),
+        "gpu": gpu_available(),
     }
 
 
@@ -153,7 +159,14 @@ def api_review(body: ReviewBody) -> Dict[str, Any]:
     if not state.unit(body.unit_id):
         raise HTTPException(404, "unknown unit")
     try:
-        return state.review(body.unit_id, body.verdict, body.reason, body.notes)
+        return state.review(
+            body.unit_id,
+            body.verdict,
+            body.reason,
+            body.notes,
+            gate_ok=body.gate_ok,
+            confirm_escape=body.confirm_escape,
+        )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 

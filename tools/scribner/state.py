@@ -56,6 +56,9 @@ class AppState:
         verdict: str,
         reason: str = "agree",
         notes: str = "",
+        *,
+        gate_ok: Optional[bool] = None,
+        confirm_escape: bool = False,
     ) -> Dict[str, Any]:
         verdict = verdict.upper().strip()
         if verdict in {"PASS", "COMPLETE", "C", "YES"}:
@@ -66,7 +69,14 @@ class AppState:
             raise ValueError("verdict must be COMPLETE or INCOMPLETE")
         decisions = {d.get("unit_id"): d for d in self.store.load_decisions()}
         drow = decisions.get(unit_id) or {}
+        auto = drow.get("decision") or "HOLD"
+        if gate_ok is True and auto == "HOLD":
+            raise ValueError("cannot mark gate_ok on HOLD; pick COMPLETE or INCOMPLETE")
         overrode = apply_label_override(drow, verdict)
+        if overrode and (reason or "").strip() in {"", "agree"}:
+            raise ValueError("override requires a non-agree reason")
+        if auto == "AUTO_FAIL" and verdict == "COMPLETE" and not confirm_escape:
+            raise ValueError("AUTO_FAIL to COMPLETE requires confirm_escape=true")
         label = {
             "unit_id": unit_id,
             "verdict": verdict,
@@ -74,7 +84,7 @@ class AppState:
             "notes": notes,
             "overrode": overrode,
             "p_fail_at_review": drow.get("p_fail"),
-            "decision_at_review": drow.get("decision"),
+            "decision_at_review": auto,
             "ts": datetime.now(timezone.utc).isoformat(),
         }
         self.store.replace_label_for_unit(unit_id, label)
