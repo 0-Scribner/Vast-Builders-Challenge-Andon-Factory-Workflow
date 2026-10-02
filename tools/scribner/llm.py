@@ -15,6 +15,11 @@ import config
 from inspection import heuristic_prior
 
 _CACHE: Dict[str, Dict[str, Any]] = {}
+_LAST_STATUS: Dict[str, Any] = {"status": "not_called", "source": "heuristic"}
+
+
+def status() -> Dict[str, Any]:
+    return dict(_LAST_STATUS)
 
 
 def prior_for(inspection: Dict[str, Any], kit_id: str) -> Dict[str, Any]:
@@ -23,14 +28,20 @@ def prior_for(inspection: Dict[str, Any], kit_id: str) -> Dict[str, Any]:
     ).hexdigest()
     if key in _CACHE:
         return _CACHE[key]
+    global _LAST_STATUS
     heuristic = heuristic_prior(inspection)
     result = heuristic
     if config.WANDB_API_KEY:
         try:
             wandb = _wandb_prior(inspection, kit_id)
             result = merge_wandb_prior(heuristic, wandb, inspection)
-        except Exception as exc:  # noqa: BLE001 — demo must not crash
-            result = {**heuristic, "wandb_error": type(exc).__name__}
+            _LAST_STATUS = {"status": "ok", "source": "wandb"}
+        except Exception as exc:  # noqa: BLE001, demo must not crash
+            err = type(exc).__name__
+            result = {**heuristic, "wandb_error": err}
+            _LAST_STATUS = {"status": "fallback", "source": "heuristic", "error": err}
+    else:
+        _LAST_STATUS = {"status": "skipped", "source": "heuristic", "reason": "WANDB_API_KEY_missing"}
     _CACHE[key] = result
     return result
 
@@ -42,7 +53,7 @@ def merge_wandb_prior(
 ) -> Dict[str, Any]:
     """W&B may corroborate. It must not green-light a fail-closed heuristic.
 
-    False CLEAR is the red line: a NEAR_MISS / blocked-path prior stays ≥ 0.8
+    False CLEAR is the red line: a NEAR_MISS / blocked-path prior stays >= 0.8
     even if the LLM replies PASS. LOW / UNCLEAR stays in the HOLD band.
     """
     if not wandb:
@@ -90,6 +101,8 @@ def _wandb_prior(inspection: Dict[str, Any], kit_id: str) -> Optional[Dict[str, 
     client = OpenAI(
         base_url=config.WANDB_INFERENCE_URL,
         api_key=config.WANDB_API_KEY,
+        timeout=20.0,
+        max_retries=0,
         project=f"{config.WANDB_TEAM}/{config.WANDB_PROJECT}"
         if config.WANDB_TEAM and config.WANDB_PROJECT
         else None,
@@ -119,11 +132,11 @@ def _wandb_prior(inspection: Dict[str, Any], kit_id: str) -> Optional[Dict[str, 
                     "You verify warehouse path safety from a parsed caption. "
                     "Reply with ONLY JSON: "
                     '{"p_fail_prior": float 0-1, "proposed": "PASS"|"FAIL"|"HOLD", '
-                    '"rationale": string ≤140 chars}. '
+                    '"rationale": string <=140 chars}. '
                     "p_fail_prior is P(the aisle is UNSAFE / a near-miss). "
                     "If NEAR_MISS is YES, PATH_CLEAR is NO, or a named hazard exists, "
-                    "p_fail_prior ≥ 0.8. "
-                    "If PATH_CLEAR=YES, NEAR_MISS=NO, HIGH confidence, p_fail_prior ≤ 0.15. "
+                    "p_fail_prior >= 0.8. "
+                    "If PATH_CLEAR=YES, NEAR_MISS=NO, HIGH confidence, p_fail_prior <= 0.15. "
                     "If UNCLEAR or LOW, around 0.5. "
                     "Never propose PASS when a person is close to a moving vehicle."
                 ),

@@ -20,6 +20,8 @@ APP_HOST="${APP_HOST#https://}"
 APP_HOST="${APP_HOST%%/*}"
 APP_NAME=scribner
 APP_DIR=tools/scribner   # from the Scribner repo root on the VM
+APP_SCHEME="${INGRESS_URL%%://*}"
+[[ "$APP_SCHEME" == "http" || "$APP_SCHEME" == "https" ]] || APP_SCHEME=http
 ```
 
 Never `echo` the sourced file.
@@ -33,6 +35,7 @@ Exclude tests to stay under ~1 MiB:
 rm -rf /tmp/scribner-cm && mkdir -p /tmp/scribner-cm
 cp "$APP_DIR"/*.py /tmp/scribner-cm/
 cp "$APP_DIR"/requirements.txt /tmp/scribner-cm/
+cp "$APP_DIR"/builders_stack_lock.json /tmp/scribner-cm/
 mkdir -p /tmp/scribner-cm/static
 cp "$APP_DIR"/static/index.html /tmp/scribner-cm/static/
 
@@ -46,7 +49,7 @@ If the UI 404s, create a second ConfigMap for `static/index.html` **or**
 flatten: the Deployment below mounts `static` from a dedicated ConfigMap.
 
 Preferred flatten (index.html next to main.py is already loaded via
-`STATIC_DIR / "index.html"` — keep `static/` as a nested key using):
+`STATIC_DIR / "index.html"`, keep `static/` as a nested key using):
 
 ```bash
 kubectl -n "$NS" create configmap "${APP_NAME}-code" \
@@ -70,6 +73,7 @@ kubectl -n "$NS" create secret generic "${APP_NAME}-vss-creds" \
   --from-literal=WANDB_API_KEY="${WANDB_API_KEY:-}" \
   --from-literal=WANDB_TEAM="${WANDB_TEAM:-}" \
   --from-literal=WANDB_PROJECT="${WANDB_PROJECT:-}" \
+  --from-literal=SCRIBNER_MODEL="${SCRIBNER_MODEL:-}" \
   --from-literal=GPU_BEARER_TOKEN="${GPU_BEARER_TOKEN:-}" \
   --from-literal=COSMOS3_REASON_URL="${COSMOS3_REASON_URL:-}" \
   --from-literal=YOLO_URL="${YOLO_URL:-}" \
@@ -83,6 +87,19 @@ kubectl -n "$NS" create secret generic "${APP_NAME}-vss-creds" \
 ## 4. Deployment + Service + Ingress
 
 ```bash
+# Persistent review/model state. Stop if this PVC cannot bind; do not claim restart persistence from /tmp.
+kubectl -n "$NS" apply -f - <<EOF
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: scribner-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 256Mi
+EOF
+
 APP_PORT=8080
 kubectl -n "$NS" apply -f - <<EOF
 apiVersion: apps/v1
@@ -113,7 +130,11 @@ spec:
         - name: SCRIBNER_MOCK
           value: "0"
         - name: SCRIBNER_DATA_DIR
-          value: "/tmp/scribner"
+          value: "/data/scribner"
+        - name: SCRIBNER_PACK
+          value: "C"
+        - name: SCRIBNER_CAMERA_ID
+          value: "sdg_warehouse_cam-2"
         - name: VSS_URL
           valueFrom: { secretKeyRef: { name: ${APP_NAME}-vss-creds, key: VSS_URL } }
         - name: VSS_USERNAME
@@ -126,6 +147,8 @@ spec:
           valueFrom: { secretKeyRef: { name: ${APP_NAME}-vss-creds, key: WANDB_TEAM } }
         - name: WANDB_PROJECT
           valueFrom: { secretKeyRef: { name: ${APP_NAME}-vss-creds, key: WANDB_PROJECT } }
+        - name: SCRIBNER_MODEL
+          valueFrom: { secretKeyRef: { name: ${APP_NAME}-vss-creds, key: SCRIBNER_MODEL } }
         - name: GPU_BEARER_TOKEN
           valueFrom: { secretKeyRef: { name: ${APP_NAME}-vss-creds, key: GPU_BEARER_TOKEN } }
         - name: COSMOS3_REASON_URL
@@ -143,6 +166,8 @@ spec:
           mountPath: /code
         - name: static
           mountPath: /code/static
+        - name: data
+          mountPath: /data
         workingDir: /code
         command: ["bash", "-c"]
         args:
@@ -163,6 +188,9 @@ spec:
       - name: static
         configMap:
           name: ${APP_NAME}-static
+      - name: data
+        persistentVolumeClaim:
+          claimName: scribner-data
 ---
 apiVersion: v1
 kind: Service
@@ -181,6 +209,7 @@ kind: Ingress
 metadata:
   name: ${APP_NAME}
   annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/rewrite-target: /\$2
 spec:
   ingressClassName: nginx
@@ -198,14 +227,14 @@ spec:
 EOF
 ```
 
-Public URL: `http://${APP_HOST}/app`
+Public URL: `${APP_SCHEME}://${APP_HOST}/app`
 
 ## 5. Verify
 
 ```bash
 kubectl -n "$NS" rollout status deploy/"$APP_NAME"
-curl -sS "http://${APP_HOST}/app/health"
-curl -sS -o /dev/null -w "%{http_code}\n" "http://${APP_HOST}/app"
+curl -sS "${APP_SCHEME}://${APP_HOST}/app/health"
+curl -sS -o /dev/null -w "%{http_code}\n" "${APP_SCHEME}://${APP_HOST}/app"
 ```
 
 ## Update loop
@@ -217,5 +246,16 @@ curl -sS -o /dev/null -w "%{http_code}\n" "http://${APP_HOST}/app"
 
 If live Explore has no `PATH_CLEAR:` captions yet, re-ingest Pack C
 (`sdg_warehouse_cam-2`) with skill `ingest-kits` before claiming
-the live gate. Scene id is inferred from `camera_id` (Pack C →
+the live gate. Scene id is inferred from `camera_id` (Pack C  to 
 `warehouse-aisle`).
+
+
+## Persistent review state
+
+The deployment uses a team-scoped PVC named `scribner-data` mounted at `/data`, with
+`SCRIBNER_DATA_DIR=/data/scribner`. If the PVC cannot bind, stop and resolve the
+team-approved StorageClass; do not silently fall back to `/tmp` and claim review state
+survives restarts. The workshop deploy helper verifies the claim before rollout.
+
+All browser traffic must remain under `/app`; the frontend derives API/clip URLs from
+the served page path and reports non-2xx responses without advancing the review item.

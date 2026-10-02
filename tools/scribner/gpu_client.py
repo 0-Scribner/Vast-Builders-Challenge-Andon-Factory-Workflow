@@ -2,12 +2,12 @@
 
 URLs come only from config.example / ``/config/<team>.config``:
 
-- ``$COSMOS3_REASON_URL`` — ``POST /v1/chat/completions``
-- ``$YOLO_URL`` — ``GET /healthz``, ``POST /v1/infer``
-- ``$COSMOS_EMBED1_URL`` — ``POST /v1/embeddings`` (256-d, ``request_type``)
+- ``$COSMOS3_REASON_URL``, ``POST /v1/chat/completions``
+- ``$YOLO_URL``, ``GET /healthz``, ``POST /v1/infer``
+- ``$COSMOS_EMBED1_URL``, ``POST /v1/embeddings`` (256-d, ``request_type``)
 
 Optional ``$GPU_BEARER_TOKEN`` (gpu skills). config.example says NIMs may
-have no auth — send the header only when the token is set.
+have no auth, send the header only when the token is set.
 
 Never hardcode a GPU host. Never call the optional ASR NIM from this
 module; it is not in the default VSS pipeline and warehouse clips have
@@ -97,9 +97,10 @@ def yolo_person_vehicle(payload: Dict[str, Any]) -> Dict[str, bool]:
 
 
 def occlusion_from_yolo(payload: Dict[str, Any], *, corpus: bool = True) -> bool:
+    """YOLO hand/person classes are Pack C subjects, not blocked-view proof."""
     classes = str(payload.get("object_classes") or "").lower()
     if corpus:
-        return "hand" in classes
+        return False
     return "hand" in classes
 
 

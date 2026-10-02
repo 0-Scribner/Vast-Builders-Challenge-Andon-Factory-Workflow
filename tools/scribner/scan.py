@@ -20,6 +20,11 @@ from llm import prior_for
 from mock_data import build_mock_units
 from vss_client import VssClient
 
+
+class LiveScanUnavailable(RuntimeError):
+    """Live corpus cannot be inspected without weakening provenance checks."""
+
+
 _KIT_TAG = re.compile(r"(?:kit|scene):([a-z0-9-]+)", re.I)
 _VEHICLE_WORDS = ("forklift", "truck", "car", "bus", "van", "vehicle", "pallet-jack")
 
@@ -39,17 +44,37 @@ def scan_live(client: Optional[VssClient] = None) -> List[Dict[str, Any]]:
         parents = client.explore_all(scope="all")
         want = config.CAMERA_FILTER
         if want:
-            filtered = [
-                p
-                for p in parents
-                if str(p.get("camera_id") or "") == want
-                or want in str(p.get("camera_id") or "")
-            ]
-            if filtered:
-                parents = filtered
+            # Pack C provenance is fail-closed: exact camera or unavailable.
+            parents = [p for p in parents if str(p.get("camera_id") or "") == want]
+            if not parents:
+                raise LiveScanUnavailable(f"no exact camera_id={want} in Explore")
     units: List[Dict[str, Any]] = []
-    for i, parent in enumerate(parents, start=1):
-        units.append(_unit_from_parent(client, parent, i))
+    seen_sources: set[str] = set()
+    seq = 0
+    for parent in parents:
+        timeline = parent.get("timeline") or []
+        if timeline and not isinstance(timeline, list):
+            raise LiveScanUnavailable("Explore timeline is malformed")
+        if not timeline and pack not in {"CROSS", "ALL", "X"}:
+            raise LiveScanUnavailable("Pack C parent has no segment timeline")
+        segments = timeline if timeline else [None]
+        for segment_index, segment in enumerate(segments, start=1):
+            if segment is not None and not isinstance(segment, dict):
+                raise LiveScanUnavailable("Explore timeline entry is malformed")
+            seq += 1
+            unit = _unit_from_parent(
+                client, parent, seq, segment=segment,
+                segment_index=segment_index, segments_available=len(segments),
+            )
+            source = str(unit.get("source") or "")
+            if not source:
+                raise LiveScanUnavailable("indexed segment has no stable source")
+            if source in seen_sources:
+                raise LiveScanUnavailable("duplicate segment source in live scan")
+            seen_sources.add(source)
+            units.append(unit)
+    if not units:
+        raise LiveScanUnavailable("live scan produced zero inspectable segments")
     return units
 
 
@@ -66,34 +91,34 @@ def _search_hits(client: VssClient) -> List[Dict[str, Any]]:
     return out
 
 
-def _unit_from_parent(client: VssClient, parent: Dict[str, Any], i: int) -> Dict[str, Any]:
-    filename = parent.get("filename") or parent.get("name") or f"video-{i}"
+def _unit_from_parent(
+    client: VssClient,
+    parent: Dict[str, Any],
+    i: int,
+    *,
+    segment: Optional[Dict[str, Any]] = None,
+    segment_index: int = 1,
+    segments_available: int = 1,
+) -> Dict[str, Any]:
+    segment = segment or {}
+    filename = segment.get("filename") or parent.get("filename") or parent.get("name") or f"video-{i}"
     tags = _as_tags(parent.get("tags"))
     camera_id = str(parent.get("camera_id") or "")
     kit_id = _kit_from(tags, filename, camera_id)
-    source = (
-        parent.get("preview_source")
-        or parent.get("source")
-        or _first_timeline_source(parent)
-    )
-    caption = parent.get("reasoning_content") or parent.get("caption") or ""
-    if source:
-        try:
-            meta = client.segment_metadata(source)
-            caption = (
-                meta.get("reasoning_content")
-                or meta.get("caption")
-                or meta.get("description")
-                or caption
-            )
-        except Exception:
-            pass
+    # Keep source/caption paired to the same Explore timeline segment.
+    # Do not silently substitute parent-preview text for a different segment.
+    if segment:
+        source = segment.get("source") or segment.get("preview_source") or ""
+        caption = segment.get("reasoning_content") or segment.get("caption") or segment.get("description") or ""
+    else:
+        source = parent.get("preview_source") or parent.get("source") or _first_timeline_source(parent)
+        caption = parent.get("reasoning_content") or parent.get("caption") or parent.get("description") or ""
     occlusion = False
     yolo_person = False
     yolo_vehicle = False
     if source:
         try:
-            det = client.detections(source)
+            det = client.tool_detections(source)
             classes = str((det or {}).get("object_classes") or "").lower()
             occlusion = _occlusion(kit_id, classes)
             yolo_person, yolo_vehicle = _yolo_flags(classes)
@@ -101,7 +126,7 @@ def _unit_from_parent(client: VssClient, parent: Dict[str, Any], i: int) -> Dict
             occlusion = False
     inspection = parse_caption(caption, kit_id=kit_id)
     unit = {
-        "id": _unit_id(parent, i),
+        "id": _unit_id(parent, i, source=str(source or "")),
         "kit_id": kit_id,
         "filename": filename,
         "camera_id": camera_id,
@@ -115,6 +140,9 @@ def _unit_from_parent(client: VssClient, parent: Dict[str, Any], i: int) -> Dict
         "yolo_person": yolo_person,
         "yolo_vehicle": yolo_vehicle,
         "mock": False,
+        "segment_index": segment_index,
+        "segments_available": segments_available,
+        "scan_pairing_complete": bool(source and caption),
     }
     unit["prior"] = prior_for(inspection, kit_id or "unknown")
     return unit
@@ -170,7 +198,7 @@ def _first_timeline_source(parent: Dict[str, Any]) -> str:
     return ""
 
 
-def _unit_id(parent: Dict[str, Any], i: int) -> str:
-    ov = parent.get("original_video") or parent.get("id") or parent.get("source") or str(i)
-    slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", str(ov))[-48:]
-    return f"unit-{slug}"
+def _unit_id(parent: Dict[str, Any], i: int, *, source: str = "") -> str:
+    stable = source or parent.get("original_video") or parent.get("id") or parent.get("source") or str(i)
+    slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", str(stable))[-64:]
+    return f"unit-{i:04d}-{slug}"

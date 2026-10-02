@@ -1,7 +1,7 @@
 """VSS HTTP client. Mirrors vast-builders-challenge retrieval/ + ingest/ skills.
 
 JWT from POST /api/v1/auth/login (retrieval/login). Playback endpoints take
-``?token=`` because <video> cannot set headers — we still proxy /clip
+``?token=`` because <video> cannot set headers, we still proxy /clip
 server-side so the browser never sees the JWT.
 
 Only routes listed in the challenge skills. No /reports, /alerts, /analytics,
@@ -127,25 +127,67 @@ class VssClient:
             params={"scope": scope, "limit": limit, "offset": offset},
         )
         r.raise_for_status()
-        return r.json()
+        page = r.json()
+        if not isinstance(page, dict):
+            raise VssError("Explore response is not an object")
+        return page
+
+    @staticmethod
+    def _explore_batch(page: Dict[str, Any]) -> tuple[List[Dict[str, Any]], Optional[int]]:
+        keys = [k for k in ("items", "results", "videos") if k in page]
+        if not keys:
+            raise VssError("Explore response has no items/results/videos collection")
+        raw = page.get(keys[0])
+        if not isinstance(raw, list) or any(not isinstance(x, dict) for x in raw):
+            raise VssError("Explore collection is malformed")
+        total_raw = page.get("total")
+        if total_raw is None:
+            return list(raw), None
+        try:
+            total = int(total_raw)
+        except (TypeError, ValueError) as exc:
+            raise VssError("Explore total is malformed") from exc
+        if total < 0:
+            raise VssError("Explore total is negative")
+        return list(raw), total
+
+    @staticmethod
+    def _explore_fingerprint(item: Dict[str, Any]) -> tuple[str, ...]:
+        return tuple(str(item.get(k) or "") for k in (
+            "original_video", "filename", "stream_id", "chunk_index", "preview_source"
+        ))
 
     def explore_all(self, scope: str = "mine") -> List[Dict[str, Any]]:
         items: List[Dict[str, Any]] = []
+        seen: set[tuple[str, ...]] = set()
         offset = 0
-        total = None
-        while True:
-            page = self.explore(scope=scope, limit=100, offset=offset)
-            batch = page.get("items") or page.get("results") or page.get("videos") or []
-            if isinstance(page, list):
-                batch = page
-            items.extend(batch)
-            total = page.get("total", len(items)) if isinstance(page, dict) else len(items)
-            if not batch or len(items) >= int(total or 0):
-                break
-            offset += 100
-            if offset > 5000:
-                break
-        return items
+        limit = 100
+        for _ in range(100):
+            page = self.explore(scope=scope, limit=limit, offset=offset)
+            batch, total = self._explore_batch(page)
+            new_count = 0
+            for item in batch:
+                fp = self._explore_fingerprint(item)
+                if not any(fp):
+                    raise VssError("Explore item has no stable identity")
+                if fp in seen:
+                    raise VssError("Explore pagination repeated an item")
+                seen.add(fp)
+                items.append(item)
+                new_count += 1
+            if total is not None:
+                if len(items) > total:
+                    raise VssError("Explore returned more rows than total")
+                if len(items) == total:
+                    return items
+                if not batch:
+                    raise VssError("Explore ended before declared total")
+            elif len(batch) < limit:
+                return items
+            if new_count == 0:
+                raise VssError("Explore pagination made no progress")
+            offset += limit
+        raise VssError("Explore pagination exceeded safety limit")
 
     def segment_metadata(self, source: str) -> Dict[str, Any]:
         r = self._get("/api/v1/videos/metadata", params={"source": source})
@@ -158,6 +200,17 @@ class VssClient:
             return None
         r.raise_for_status()
         return r.json()
+
+    def tool_detections(self, source: str) -> Optional[Dict[str, Any]]:
+        """Laptop-safe documented tool route for per-segment YOLO evidence."""
+        r = self._get("/api/v1/tools/detections", params={"source": source})
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        payload = r.json()
+        if payload is not None and not isinstance(payload, dict):
+            raise VssError("tools/detections response is malformed")
+        return payload
 
     def search(self, query: str, **body: Any) -> Dict[str, Any]:
         payload = {"query": query, "top_k": 50, "llm_top_n": 0, "include_public": True}

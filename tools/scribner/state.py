@@ -1,4 +1,4 @@
-"""Orchestrate scan → score → review → retrain.
+"""Orchestrate scan to score to review to retrain.
 
 Agent note: ``AppState`` is the object ``main.py`` talks to. Keep HTTP
 handlers thin; put loop logic here so tests can drive it without Starlette.
@@ -131,9 +131,15 @@ class AppState:
             "andon_line": line_lamp(q),
             **stats,
         }
+        tracking = log_retrain(row, scorer, labels)
+        row["wandb_logged"] = 1.0 if tracking.get("status") == "ok" else 0.0
         self.store.append_metrics(row)
-        log_retrain(row, scorer, labels)
-        return {"metrics": stats, "thresholds": thresholds, "scorer_n": scorer.get("n")}
+        return {
+            "metrics": stats,
+            "thresholds": thresholds,
+            "scorer_n": scorer.get("n"),
+            "wandb_tracking": tracking,
+        }
 
     def metrics(self) -> Dict[str, Any]:
         return {

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Scribner — 安灯 ANDON · Pack C</title>
+  <title>Scribner, 安灯 ANDON · Pack C</title>
   <style>
     :root {
       --bg: #07090c;
@@ -128,7 +128,7 @@
       <div class="sub">ANDON · Pack C 倉庫通路 · person close to a moving vehicle</div>
     </div>
     <div class="sp"></div>
-    <span id="modeChip" class="chip HOLD">…</span>
+    <span id="modeChip" class="chip HOLD">...</span>
     <button onclick="scan()">Scan / reload</button>
     <button class="primary" onclick="retrain()">Retrain</button>
   </header>
@@ -139,7 +139,7 @@
       <div class="lamp yellow" id="lampYellow"><div class="bulb"></div><div class="ja">呼び出し</div><div class="en">HOLD · call</div></div>
       <div class="lamp red" id="lampRed"><div class="bulb"></div><div class="ja">停止</div><div class="en">ALERT · stop</div></div>
     </div>
-    <div class="andon-meta" id="andonMeta">line …</div>
+    <div class="andon-meta" id="andonMeta">line ...</div>
   </div>
   <div class="kpis" id="kpis"></div>
   <div class="tabs">
@@ -169,7 +169,7 @@
         <button class="pass" onclick="review('CLEAR')">正常 CLEAR  (A / C)</button>
         <button class="fail" onclick="review('UNSAFE')">異常 安灯 UNSAFE  (O / U)</button>
         <select id="reason"></select>
-        <span class="hint">O pulls the andon cord. AUTO_ALERT→CLEAR needs confirm.</span>
+        <span class="hint">O pulls the andon cord. AUTO_ALERT to CLEAR needs confirm.</span>
       </div>
       <div class="meta" id="unitMeta"></div>
       <p class="caption" id="caption"></p>
@@ -189,6 +189,35 @@
   </footer>
 <script>
 const $ = (id) => document.getElementById(id);
+
+// Keep browser requests under the path that served this page.
+// Local root -> /api/... ; event Ingress /app -> /app/api/...
+const APP_BASE = (() => {
+  const path = window.location.pathname || '/';
+  return path.endsWith('/') ? path : path + '/';
+})();
+function appUrl(path) {
+  return APP_BASE + String(path || '').replace(/^\/+/, '');
+}
+function showError(err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  const caption = $('caption');
+  if (caption) caption.textContent = 'ERROR: ' + msg;
+  const mode = $('modeChip');
+  if (mode) { mode.textContent = 'ERROR'; mode.className = 'chip AUTO_ALERT'; }
+}
+async function appFetch(path, options) {
+  const response = await fetch(appUrl(path), options);
+  if (!response.ok) {
+    let detail = '';
+    try { detail = (await response.text()).slice(0, 240); } catch (_) {}
+    const err = new Error(`HTTP ${response.status} ${path}${detail ? ': ' + detail : ''}`);
+    showError(err);
+    throw err;
+  }
+  return response;
+}
+
 let queue = [];
 let current = null;
 let reasons = [];
@@ -211,7 +240,7 @@ function tab(name) {
 }
 
 async function boot() {
-  const kits = await (await fetch('/api/kits')).json();
+  const kits = await (await appFetch('api/kits')).json();
   reasons = kits.reasons || [];
   $('reason').innerHTML = reasons.map(r => `<option value="${r.id}">${r.label}</option>`).join('');
   if (kits.payoff_query) $('payoffFoot').textContent = kits.payoff_query;
@@ -221,12 +250,12 @@ async function boot() {
 
 async function refresh() {
   const uid = current && current.id;
-  const andonUrl = uid ? '/api/andon?unit_id=' + encodeURIComponent(uid) : '/api/andon';
+  const andonUrl = uid ? 'api/andon?unit_id=' + encodeURIComponent(uid) : 'api/andon';
   const [m, q, h, a] = await Promise.all([
-    fetch('/api/metrics').then(r => r.json()),
-    fetch('/api/queue').then(r => r.json()),
-    fetch('/health').then(r => r.json()),
-    fetch(andonUrl).then(r => r.json()),
+    appFetch('api/metrics').then(r => r.json()),
+    appFetch('api/queue').then(r => r.json()),
+    appFetch('health').then(r => r.json()),
+    appFetch(andonUrl).then(r => r.json()),
   ]);
   $('modeChip').textContent = h.mock ? 'MOCK' : 'LIVE';
   andon = a;
@@ -272,7 +301,7 @@ function renderKpis(c, a) {
     ['緑 AUTO_CLEAR', pct(c.auto_clear_rate ?? c.auto_pass_rate)],
     ['赤 AUTO_ALERT', pct(c.auto_alert_rate ?? c.auto_fail_rate)],
     ['Labels', String(c.n_labels ?? 0)],
-    ['HOLD band', `${(c.t_pass??0).toFixed(2)}–${(c.t_fail??0).toFixed(2)}`],
+    ['HOLD band', `${(c.t_pass??0).toFixed(2)}-${(c.t_fail??0).toFixed(2)}`],
   ];
   $('kpis').innerHTML = cells.map(([k,v]) => `<div class="kpi"><span>${k}</span><b>${v}</b></div>`).join('');
 }
@@ -283,7 +312,7 @@ function renderQueue() {
     const d = (u.decision_row || {}).decision || 'HOLD';
     const p = (u.decision_row || {}).p_fail;
     const insp = u.inspection || {};
-    const hz = (insp.hazards || insp.missing || []).join(', ') || '—';
+    const hz = (insp.hazards || insp.missing || []).join(', ') || ', ';
     const active = current && current.id === u.id ? 'active' : '';
     const lamp = lampOf(d);
     return `<div class="queue-item ${active}" onclick="select('${u.id}')">
@@ -292,12 +321,12 @@ function renderQueue() {
       <span class="chip ${d}">${d}</span>
       <div class="hint">p_fail=${p} · ${hz}</div>
     </div>`;
-  }).join('') || '<p class="hint">Queue empty. 正常 — line is green, or every HOLD is labeled.</p>';
+  }).join('') || '<p class="hint">Queue empty. 正常, line is green, or every HOLD is labeled.</p>';
 }
 
 async function select(id) {
-  current = await (await fetch('/api/units/' + id)).json();
-  const a = await (await fetch('/api/andon?unit_id=' + encodeURIComponent(id))).json();
+  current = await (await appFetch('api/units/' + id)).json();
+  const a = await (await appFetch('api/andon?unit_id=' + encodeURIComponent(id))).json();
   andon = a;
   renderAndon(a);
   renderQueue();
@@ -307,7 +336,7 @@ async function select(id) {
 function yn(v) {
   if (v === true) return 'YES';
   if (v === false) return 'NO';
-  return '—';
+  return ', ';
 }
 
 function renderUnit(u) {
@@ -322,13 +351,13 @@ function renderUnit(u) {
   const d = u.decision_row || {};
   const insp = u.inspection || {};
   $('unitTitle').textContent = '· ' + u.id;
-  $('player').src = '/clip?unit_id=' + encodeURIComponent(u.id) + '&source=' + encodeURIComponent(u.source || '');
+  $('player').src = appUrl('clip?unit_id=' + encodeURIComponent(u.id) + '&source=' + encodeURIComponent(u.source || ''));
   $('caption').textContent = u.caption || '';
   $('schema').innerHTML = [
     chip('', 'PATH_CLEAR ' + yn(insp.path_clear)),
     chip('', 'NEAR_MISS ' + yn(insp.near_miss)),
-    chip('', 'DIST ' + (insp.distance || '—')),
-    chip('', 'MOTION ' + (insp.motion || '—')),
+    chip('', 'DIST ' + (insp.distance || ', ')),
+    chip('', 'MOTION ' + (insp.motion || ', ')),
     chip('', 'YOLO ' + ((u.yolo_person ? 'person ' : '') + (u.yolo_vehicle ? 'vehicle' : '') || 'none')),
   ].join('');
   $('unitMeta').innerHTML = [
@@ -339,13 +368,13 @@ function renderUnit(u) {
     kv('confidence', insp.confidence),
     kv('hazard', (insp.hazards || insp.missing || []).join(', ') || 'NONE'),
     kv('unclear', (insp.unclear || []).join(', ') || 'NONE'),
-    kv('fail-closed', d.fail_closed || '—'),
+    kv('fail-closed', d.fail_closed || ', '),
   ].join('');
 }
-function kv(k, v) { return `<div><span class="hint">${k}</span><div>${v ?? '—'}</div></div>`; }
+function kv(k, v) { return `<div><span class="hint">${k}</span><div>${v ?? ', '}</div></div>`; }
 function chip(k, v) {
-  if (!k) return `<span class="chip HOLD">${v||'—'}</span>`;
-  return `<div><span class="hint">${k}</span><div><span class="chip ${v||''}">${v||'—'}</span></div></div>`;
+  if (!k) return `<span class="chip HOLD">${v||', '}</span>`;
+  return `<div><span class="hint">${k}</span><div><span class="chip ${v||''}">${v||', '}</span></div></div>`;
 }
 
 async function review(verdict) {
@@ -353,7 +382,7 @@ async function review(verdict) {
   const auto = (current.decision_row || {}).decision || 'HOLD';
   let confirm_escape = false;
   if ((auto === 'AUTO_ALERT' || auto === 'AUTO_FAIL') && verdict === 'CLEAR') {
-    if (!window.confirm('赤灯を緑にする。False CLEAR is the red line. Confirm AUTO_ALERT → CLEAR?')) return;
+    if (!window.confirm('赤灯を緑にする。False CLEAR is the red line. Confirm AUTO_ALERT to CLEAR?')) return;
     confirm_escape = true;
   }
   let reason = $('reason').value;
@@ -361,7 +390,7 @@ async function review(verdict) {
   if (overrode && (reason === 'agree' || !reason)) {
     reason = verdict === 'UNSAFE' ? 'vlm_missed_near_miss' : 'vlm_false_alert';
   }
-  await fetch('/api/review', {
+  await appFetch('api/review', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
@@ -376,17 +405,17 @@ async function review(verdict) {
 }
 
 async function retrain() {
-  await fetch('/api/retrain', { method: 'POST' });
+  await appFetch('api/retrain', { method: 'POST' });
   await refresh();
 }
 async function scan() {
-  await fetch('/api/scan', { method: 'POST' });
+  await appFetch('api/scan', { method: 'POST' });
   current = null;
   await refresh();
 }
 
 async function loadUnits() {
-  const data = await (await fetch('/api/units')).json();
+  const data = await (await appFetch('api/units')).json();
   const rows = data.units || [];
   $('unitTable').innerHTML = `<tr><th></th><th>id</th><th>scene</th><th>variant</th><th>gate</th><th>p_fail</th><th>label</th><th>hazard</th></tr>` +
     rows.map(u => {
@@ -406,7 +435,7 @@ async function loadUnits() {
 }
 
 async function loadReport() {
-  $('reportMd').textContent = await (await fetch('/api/report')).text();
+  $('reportMd').textContent = await (await appFetch('api/report')).text();
 }
 
 document.addEventListener('keydown', (e) => {
@@ -420,7 +449,7 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-boot().catch(err => { $('caption').textContent = String(err); });
+boot().catch(showError);
 </script>
 </body>
 </html>

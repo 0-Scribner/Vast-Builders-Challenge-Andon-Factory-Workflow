@@ -1,4 +1,4 @@
-"""Scribner FastAPI app — warehouse near-miss / path-clear gate.
+"""Scribner FastAPI app, warehouse near-miss / path-clear gate.
 
 Agent note
 ----------
@@ -35,6 +35,9 @@ import builders_stack
 import config
 from andon import ensure_warehouse_clip, lamp_for_unit, snapshot as andon_snapshot
 from gpu_client import available as gpu_available
+from llm import status as llm_status
+from scan import LiveScanUnavailable
+from tracking import status as tracking_status
 from kits import (
     CAMERA_ID,
     KITS,
@@ -115,6 +118,9 @@ def health() -> Dict[str, Any]:
         "andon": _andon(),
         "stack": builders_stack.health_snapshot(),
         "gpu": gpu_available(),
+        "live_configured": bool(config.VSS_URL and config.VSS_USERNAME and config.VSS_PASSWORD),
+        "llm": llm_status(),
+        "wandb_tracking": tracking_status(),
     }
 
 
@@ -125,9 +131,14 @@ def index() -> FileResponse:
 
 @app.post("/api/scan")
 def api_scan() -> Dict[str, Any]:
-    result = state.scan()
-    gated = state.run_gate()
-    return {**result, **gated}
+    try:
+        result = state.scan()
+        gated = state.run_gate()
+        return {**result, **gated}
+    except LiveScanUnavailable as exc:
+        raise HTTPException(503, f"live scan unavailable: {exc}") from exc
+    except Exception as exc:
+        raise HTTPException(503, f"live scan failed: {type(exc).__name__}") from exc
 
 
 @app.post("/api/run")
@@ -278,11 +289,13 @@ def api_report() -> PlainTextResponse:
 def clip(source: str = Query(""), unit_id: str = Query("")) -> Response:
     """Pack C segment. Mock paints an andon-tinted warehouse aisle for this unit."""
     source = clip_source(source, unit_id)
-    if state.mock or not config.VSS_URL:
+    if state.mock:
         path = _ensure_mock_clip(unit_id)
         return FileResponse(path, media_type="video/mp4")
+    if not config.VSS_URL:
+        raise HTTPException(503, "live VSS is not configured")
     if not source:
-        raise HTTPException(404, "no VSS source for this unit")
+        raise HTTPException(404, "no VSS source for this live unit")
     try:
         client = VssClient()
         data = client.stream_bytes(source)
