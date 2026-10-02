@@ -1,8 +1,8 @@
 # Scribner
 
-Scribner is the **Primary** judged product: a warehouse **path-clear / near-miss gate** on the [VAST Builders Challenge](https://github.com/vast-data/vast-builders-challenge) **Pack C** archive (`sdg_warehouse_cam-2`, ~178 aisle clips). Cosmos Reason captions each clip against a PATH_CLEAR / NEAR_MISS schema. A tiny logistic model, anchored to that prior, auto-clears, auto-alerts, or holds for a human. Reviewer labels retrain the model so coverage rises while unclear distance stays in HOLD.
+Scribner is the **Primary** judged product: a Japanese-QC **安灯 andon board** on the [VAST Builders Challenge](https://github.com/vast-data/vast-builders-challenge) **Pack C** warehouse archive (`sdg_warehouse_cam-2`). Cosmos Reason captions each aisle clip. The gate is jidoka: 緑 AUTO_CLEAR, 黄 HOLD (呼び出し), 赤 AUTO_ALERT (停止). A human pulls the andon cord (UNSAFE). False CLEAR never auto-greens a red lamp.
 
-**Pitch (40 words):** Scribner turns the official warehouse aisle archive into an aisle gate. It reads a path-safety caption, holds uncertain clips for a human, and learns from those decisions so the next shift reviews fewer near-misses — without auto-clearing what it cannot see.
+**Pitch (40 words):** Scribner puts an andon over official warehouse video. Green means the aisle is clear. Yellow calls a human. Red is a near-miss — a person close to a moving vehicle — and the line does not run until someone looks.
 
 Plan B (LEGO completeness) lives on `cursor/plan-b-lego-completeness-72e3`. Agents: read **[AGENTS.md](AGENTS.md)** first, then `.cursor/skills/`. Lines: [docs/PLAN.md](docs/PLAN.md).
 
@@ -18,7 +18,7 @@ The same schema **is** the official Architecture Reference payoff query *person 
 PYTHONPATH=tools/scribner python3 -m unittest discover -s tools/scribner/tests -v
 export SCRIBNER_MOCK=1
 ./scripts/run_mock.sh
-# http://127.0.0.1:8080   keys: A/C clear · O/U unsafe · N next
+# http://127.0.0.1:8080   keys: A/C 正常 CLEAR · O/U 異常 andon cord · N next
 ```
 
 Oracle loop:
@@ -55,11 +55,11 @@ VAST S3 + DataEngine + VastDB · NVIDIA Cosmos Reason (captions) · Cosmos Embed
 ## 2-minute demo
 
 1. Problem: a person close to a moving vehicle is still a human scrubbing cameras.
-2. Show a PATH_CLEAR YES caption vs NEAR_MISS YES (prompt = schema).
-3. Cold start: empty aisles AUTO_CLEAR; forklift-near-person AUTO_ALERT; UNCLEAR / far-side HOLDs.
-4. Label ~15 HOLDs. Retrain. HOLD band narrows; coverage up.
-5. An unclear-distance clip still HOLDs — that is the point of HITL. False CLEAR is illegal.
-6. Name Pack C + the stack. Open the markdown report.
+2. Andon on the Pack C clip: 緑 AUTO_CLEAR, 黄 HOLD, 赤 AUTO_ALERT. Station tower tracks this clip; line lamps track the worst open ticket.
+3. PATH_CLEAR YES vs NEAR_MISS YES (prompt = schema). A near-miss clip is a red lamp, not a search hit.
+4. Label ~15 HOLDs (`A`/`O` — O pulls the cord). Retrain. HOLD band narrows; coverage up.
+5. Unclear-distance stays 黄. 赤灯は人なしで緑にしない.
+6. Name Pack C + the stack. Open the shift report.
 
 ## Constraints we will not violate
 

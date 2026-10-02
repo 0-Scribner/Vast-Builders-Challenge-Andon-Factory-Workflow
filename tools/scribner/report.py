@@ -9,7 +9,8 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any, Dict, List
 
-from kits import PAYOFF_QUERY, PRODUCT, STACK_LINE
+from andon import snapshot as andon_snapshot
+from kits import CAMERA_ID, LOCATION, PAYOFF_QUERY, PRODUCT, STACK_LINE
 
 
 def render_markdown(
@@ -36,10 +37,24 @@ def render_markdown(
             passed.append(u)
     kits = Counter((u.get("kit_id") or "?") for u in failed)
     variants = Counter((u.get("variant") or "live") for u in failed)
+    board = andon_snapshot(
+        decisions=decisions,
+        queue=[
+            {**by_id[d.get("unit_id")], "decision_row": d}
+            for d in decisions
+            if d.get("decision") == "HOLD" and d.get("unit_id") in by_id
+        ],
+        camera_id=CAMERA_ID,
+        location=LOCATION,
+    )
     lines = [
         "# Scribner aisle-gate report",
         "",
         f"- Product: **{PRODUCT}**",
+        f"- 安灯 ANDON line: **{board['line_ja']}** ({board['line_en']})",
+        f"- 現場 gemba: `{board['camera_id']}` / `{board['location']}`",
+        f"- Lamps: 緑 {board['counts']['green']} · 黄 {board['counts']['yellow']} · 赤 {board['counts']['red']}",
+        f"- Rule: {board['rule']} — {board['rule_en']}",
         f"- Query: *{PAYOFF_QUERY}*",
         f"- Stack: {STACK_LINE}",
         f"- Units scanned: **{len(units)}**",

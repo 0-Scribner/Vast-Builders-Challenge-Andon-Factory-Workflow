@@ -14,17 +14,17 @@ Scribner is the app in `tools/scribner/`. The VSS ingest/search stack is **alrea
 
 **Pack C** (SDG warehouse, `camera_id=sdg_warehouse_cam-2`, `location=warehouse3`) is already indexed. Re-ingest those clips with a **path-safety prompt**. Cosmos Reason describes each aisle clip. Scribner parses PATH_CLEAR / NEAR_MISS, scores `p_fail` (probability the clip is **UNSAFE**), and decides:
 
-- `AUTO_CLEAR` — path looks clear, confident
-- `AUTO_ALERT` — near-miss or blocked path, confident
-- `HOLD` — send to a human
+- `AUTO_CLEAR` — 緑 正常, path looks clear, confident
+- `AUTO_ALERT` — 赤 停止, near-miss or blocked path, confident
+- `HOLD` — 黄 呼び出し, send to a human (andon cord)
 
-A reviewer marks **CLEAR** or **UNSAFE** (keyboard A/C · O/U). Those labels retrain a tiny logistic regression **anchored to the VLM prior**, then re-derive `T_pass` / `T_fail`. Coverage (share of units decided without a human) should rise. Glare / far-side / low-confidence clips stay in HOLD.
+The operator UI is an **安灯 andon board** on the Pack C clip (現場 gemba). A reviewer marks **CLEAR** (正常, A/C) or **UNSAFE** (異常 / pull cord, O/U). Those labels retrain a tiny logistic regression **anchored to the VLM prior**, then re-derive `T_pass` / `T_fail`. Coverage should rise. Glare / far-side / low-confidence clips stay 黄 HOLD.
 
-**Red line:** false CLEAR (an unsafe aisle marked clear). Fail closed.
+**Red line:** false CLEAR (an unsafe aisle marked clear). 赤灯は人なしで緑にしない.
 
 The same schema **is** the official cross-pack query *person close to a moving vehicle* via `SCRIBNER_PACK=cross`.
 
-Do **not** build a hard-hat detector. PPE is the example the brief says not to treat as the whole product. Do not reskin the VSS Explore UI — this is an ACT box (accept / object).
+Do **not** build a hard-hat detector. PPE is the example the brief says not to treat as the whole product. Do not reskin the VSS Explore UI — this is andon + jidoka, not a search page.
 
 ## First actions on a new session
 
@@ -46,7 +46,8 @@ Never print, log, or commit values from `/config/*.config`. List env **names** w
 | VSS HTTP | `tools/scribner/vss_client.py` |
 | W&B LLM prior | `tools/scribner/llm.py` |
 | Routes | `tools/scribner/main.py` |
-| Operator UI | `tools/scribner/static/index.html` |
+| Andon lamps / 現場 mapping | `tools/scribner/andon.py` then `/api/andon` |
+| Operator UI (andon + Pack C clip) | `tools/scribner/static/index.html` |
 | Mock units | `tools/scribner/mock_data.py` |
 | Live Explore / search scan | `tools/scribner/scan.py` |
 | Persistence | `tools/scribner/store.py` |
@@ -76,8 +77,8 @@ Skills live in `.cursor/skills/`. Load the matching skill **before** writing cur
 ## Demo story (2 minutes)
 
 1. Problem: a person close to a moving vehicle is still a human scrubbing cameras.
-2. Show PATH_CLEAR YES vs NEAR_MISS YES (prompt = schema).
-3. Gate HOLDs glare/unclear; AUTO_ALERT on a clean near-miss; AUTO_CLEAR on empty aisles.
-4. Review ~15 units (keyboard `A` / `O`).
-5. Retrain. Coverage rises; salient near-misses AUTO_ALERT; unclear distance stays HOLD.
-6. Name the stack (footer / `/health`) and the official Pack C camera. Optional closer: same schema hits *person close to a moving vehicle* across packs.
+2. Andon on the Pack C clip (現場): 緑 AUTO_CLEAR, 黄 HOLD, 赤 AUTO_ALERT. Line lamp = worst open ticket.
+3. Show PATH_CLEAR YES vs NEAR_MISS YES (prompt = schema). Red lamp on a near-miss clip.
+4. Review ~15 units (keyboard `A` / `O` — O pulls the andon cord).
+5. Retrain. Coverage rises; salient near-misses stay 赤; unclear distance stays 黄 HOLD. 赤灯は人なしで緑にしない.
+6. Name the stack (footer / `/health`) and `sdg_warehouse_cam-2`. Optional closer: same schema hits *person close to a moving vehicle* across packs.

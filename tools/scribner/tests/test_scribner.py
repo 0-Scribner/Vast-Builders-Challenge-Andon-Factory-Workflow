@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ["SCRIBNER_MOCK"] = "1"
 os.environ.setdefault("SCRIBNER_DATA_DIR", tempfile.mkdtemp(prefix="scribner-test-"))
 
+from andon import ensure_warehouse_clip, lamp_for_decision, line_lamp, snapshot  # noqa: E402
 from gate import decide_one, pass_blocked  # noqa: E402
 from inspection import heuristic_prior, parse_caption  # noqa: E402
 from kits import CUSTOM_PROMPT_MAX, kit_for_camera, kit_ids, prompt_for_kit  # noqa: E402
@@ -229,6 +230,52 @@ class LoopTests(unittest.TestCase):
         self.state.review(hold["unit_id"], "O", reason="agree")
         lab = next(x for x in self.state.store.load_labels() if x["unit_id"] == hold["unit_id"])
         self.assertEqual(lab["verdict"], "UNSAFE")
+
+
+class AndonTests(unittest.TestCase):
+    def test_alert_is_red_hold_is_yellow_clear_is_green(self) -> None:
+        self.assertEqual(lamp_for_decision("AUTO_ALERT"), "red")
+        self.assertEqual(lamp_for_decision("AUTO_FAIL"), "red")
+        self.assertEqual(lamp_for_decision("UNSAFE"), "red")
+        self.assertEqual(lamp_for_decision("HOLD"), "yellow")
+        self.assertEqual(lamp_for_decision(""), "yellow")
+        self.assertEqual(lamp_for_decision("AUTO_CLEAR"), "green")
+        self.assertEqual(lamp_for_decision("CLEAR"), "green")
+
+    def test_line_lamp_red_beats_yellow(self) -> None:
+        q = [
+            {"decision_row": {"decision": "HOLD"}},
+            {"decision_row": {"decision": "AUTO_ALERT"}},
+        ]
+        self.assertEqual(line_lamp(q), "red")
+        self.assertEqual(line_lamp([{"decision_row": {"decision": "HOLD"}}]), "yellow")
+        self.assertEqual(line_lamp([]), "green")
+
+    def test_snapshot_pins_pack_c_gemba(self) -> None:
+        board = snapshot(
+            decisions=[
+                {"decision": "AUTO_CLEAR"},
+                {"decision": "HOLD"},
+                {"decision": "AUTO_ALERT"},
+            ],
+            queue=[{"id": "wh-021", "kit_id": "warehouse-aisle", "decision_row": {"decision": "AUTO_ALERT"}}],
+            current={"id": "wh-021", "kit_id": "warehouse-aisle", "decision_row": {"decision": "AUTO_ALERT"}},
+        )
+        self.assertEqual(board["board"], "andon")
+        self.assertEqual(board["name_ja"], "安灯")
+        self.assertEqual(board["gemba"], "現場")
+        self.assertEqual(board["jidoka"], "自働化")
+        self.assertEqual(board["camera_id"], "sdg_warehouse_cam-2")
+        self.assertEqual(board["station_ja"], "倉庫通路")
+        self.assertEqual(board["line_lamp"], "red")
+        self.assertEqual(board["station_lamp"], "red")
+        self.assertEqual(board["rule"], "赤灯は人なしで緑にしない")
+        self.assertEqual(board["counts"]["n"], 3)
+
+    def test_warehouse_clip_is_real_mp4(self) -> None:
+        path = ensure_warehouse_clip("red")
+        self.assertGreater(path.stat().st_size, 1000)
+        self.assertTrue(path.name.endswith("red.mp4"))
 
 
 if __name__ == "__main__":

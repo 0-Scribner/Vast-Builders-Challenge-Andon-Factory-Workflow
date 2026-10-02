@@ -11,3 +11,4 @@ Primary identity (also `/health` and the operator footer):
 
 - payoff query: *person close to a moving vehicle*
 - stack line: `VAST · NVIDIA Cosmos · CoreWeave / W&B · Cursor`
+- operator surface: 安灯 andon on the Pack C clip (`/api/andon`, `tools/scribner/andon.py`)

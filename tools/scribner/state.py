@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import config
+from andon import counts as andon_counts, line_lamp
 from gate import apply_label_override, decide_all, metrics_bundle, review_queue
 from learn import derive_thresholds, fit_logistic
 from scan import scan_live, scan_mock
@@ -119,9 +120,15 @@ class AppState:
         decisions = decide_all(units, scorer, thresholds, audit_fraction=config.AUDIT_FRACTION)
         self.store.save_decisions(decisions)
         stats = metrics_bundle(decisions, labels, thresholds)
+        q = review_queue(units, decisions, labels)
+        tally = andon_counts(decisions)
         row = {
             "ts": datetime.now(timezone.utc).isoformat(),
             "scorer_n": scorer.get("n"),
+            "andon_green": float(tally["green"]),
+            "andon_yellow": float(tally["yellow"]),
+            "andon_red": float(tally["red"]),
+            "andon_line": line_lamp(q),
             **stats,
         }
         self.store.append_metrics(row)

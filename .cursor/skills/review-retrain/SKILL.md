@@ -24,7 +24,8 @@ Never quote an accuracy number with n < 30 labels. Show the coverage curve.
 
 ## UI
 
-Keyboard: `A`/`C` CLEAR (accept), `O`/`U` UNSAFE (object), `N` next.
+Keyboard: `A`/`C` 正常 CLEAR (accept), `O`/`U` 異常 UNSAFE (pull the andon cord), `N` next.
+The station tower tracks the clip on screen; the line lamps track the worst open ticket.
 Reason chips must be set when the human disagrees with the caption
 (`vlm_missed_near_miss`, `vlm_false_alert`, `far_but_looks_close`, …).
 AUTO_ALERT → CLEAR requires `confirm_escape=true`.

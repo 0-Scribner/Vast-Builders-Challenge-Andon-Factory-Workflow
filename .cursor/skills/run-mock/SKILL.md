@@ -34,10 +34,12 @@ cd tools/scribner
 python3 main.py
 ```
 
-Open `http://127.0.0.1:8080`. Keyboard: `A`/`C` CLEAR, `O`/`U` UNSAFE, `N` next.
+Open `http://127.0.0.1:8080`. Keyboard: `A`/`C` 正常 CLEAR, `O`/`U` 異常 andon cord, `N` next.
+
+Expect a three-lamp **安灯** (緑 正常 / 黄 呼び出し / 赤 停止) over a Pack C aisle clip, a vertical station tower next to the video, and `/api/andon` JSON with `board=andon`.
 
 Health check: `curl -s http://127.0.0.1:8080/health` — expect
-`"product":"warehouse-near-miss"` and `person close to a moving vehicle`.
+`"product":"warehouse-near-miss"`, `person close to a moving vehicle`, `"andon"` with `name_ja` 安灯.
 
 ## Headless review loop (optional)
 

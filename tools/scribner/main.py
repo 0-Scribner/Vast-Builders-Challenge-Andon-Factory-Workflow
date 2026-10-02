@@ -15,11 +15,10 @@ Bind 0.0.0.0:$PORT. Ingress strips ``/app``. ``/health`` is the probe.
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
@@ -34,6 +33,7 @@ from pydantic import BaseModel, Field
 
 import builders_stack
 import config
+from andon import ensure_warehouse_clip, lamp_for_unit, snapshot as andon_snapshot
 from gpu_client import available as gpu_available
 from kits import (
     CAMERA_ID,
@@ -63,7 +63,7 @@ async def _lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Scribner warehouse near-miss gate", version="2.0.0", lifespan=_lifespan)
+app = FastAPI(title="Scribner warehouse andon / near-miss gate", version="2.2.0", lifespan=_lifespan)
 
 STATIC = config.STATIC_DIR
 STATIC.mkdir(parents=True, exist_ok=True)
@@ -112,6 +112,7 @@ def health() -> Dict[str, Any]:
         "plan_b_branch": PLAN_B_BRANCH,
         "kits": kit_ids(),
         "store": state.store.state_summary(),
+        "andon": _andon(),
         "stack": builders_stack.health_snapshot(),
         "gpu": gpu_available(),
     }
@@ -219,6 +220,26 @@ def api_metrics() -> Dict[str, Any]:
     return state.metrics()
 
 
+@app.get("/api/andon")
+def api_andon(unit_id: str = "") -> Dict[str, Any]:
+    return _andon(unit_id or None)
+
+
+def _andon(unit_id: Optional[str] = None) -> Dict[str, Any]:
+    q = state.queue()
+    current = state.unit(unit_id) if unit_id else None
+    if current is None:
+        current = q[0] if q else None
+    return andon_snapshot(
+        decisions=state.store.load_decisions(),
+        queue=q,
+        current=current,
+        camera_id=CAMERA_ID,
+        location=LOCATION,
+        pack=config.PACK,
+    )
+
+
 @app.get("/api/kits")
 def api_kits() -> Dict[str, Any]:
     scenes = {
@@ -255,9 +276,9 @@ def api_report() -> PlainTextResponse:
 
 @app.get("/clip")
 def clip(source: str = Query(""), unit_id: str = Query("")) -> Response:
-    """Proxy a segment. Mock mode serves a generated 4s color clip."""
+    """Pack C segment. Mock paints an andon-tinted warehouse aisle for this unit."""
     if state.mock or not config.VSS_URL:
-        path = _ensure_mock_clip()
+        path = _ensure_mock_clip(unit_id)
         return FileResponse(path, media_type="video/mp4")
     try:
         client = VssClient()
@@ -267,22 +288,9 @@ def clip(source: str = Query(""), unit_id: str = Query("")) -> Response:
         raise HTTPException(502, f"stream failed: {type(exc).__name__}") from exc
 
 
-def _ensure_mock_clip() -> Path:
-    path = Path("/tmp/scribner_mock.mp4")
-    if path.exists() and path.stat().st_size > 1000:
-        return path
-    cmd = [
-        "ffmpeg", "-y", "-f", "lavfi",
-        "-i", "color=c=0x1a2332:s=640x360:d=4.2:r=24",
-        "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-t", "4.2",
-        "-c:a", "aac", "-shortest", "-movflags", "+faststart",
-        str(path),
-    ]
-    subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    if not path.exists():
-        path.write_bytes(b"")
-    return path
+def _ensure_mock_clip(unit_id: str = "") -> Path:
+    unit = state.unit(unit_id) if unit_id else None
+    return ensure_warehouse_clip(lamp_for_unit(unit) if unit else "yellow")
 
 
 def main() -> None:

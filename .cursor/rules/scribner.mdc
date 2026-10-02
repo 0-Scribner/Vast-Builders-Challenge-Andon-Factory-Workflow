@@ -16,6 +16,7 @@ You are helping a team ship the Primary warehouse path-clear / near-miss gate on
 - Build a web app. Deploy on Kubernetes at path `/app` using `deploy-scribner`.
 - Bind env/APIs to `docs/BUILDERS_STACK.md`. Run `./scripts/run_adversarial.sh` after stack-touching changes.
 - Keep implicit stack identity in `/health` and the operator footer (`VAST · NVIDIA Cosmos · CoreWeave / W&B · Cursor` and the payoff query). Do not add a PPE billboard.
+- The operator surface is a Japanese QC **安灯 andon** on the Pack C clip (現場). Line lamp = worst open queue ticket. Station lamp = the clip on screen. Red never auto-greens.
 
 ## Do not
 

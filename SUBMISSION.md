@@ -1,7 +1,7 @@
 # team-pending
 
 ## Project
-Scribner is an aisle gate on official Pack C warehouse video. It parses a path-safety caption from Cosmos Reason (PERSON, VEHICLE, PATH_CLEAR, NEAR_MISS), holds uncertain clips for a human, and retrains a prior-anchored logistic gate from those labels so coverage rises without auto-clearing a person close to a moving vehicle. That phrase is the official cross-pack search query and the product identity.
+Scribner is an 安灯 andon on official Pack C warehouse video. Cosmos Reason captions PATH_CLEAR / NEAR_MISS. 緑 AUTO_CLEAR, 黄 HOLD, 赤 AUTO_ALERT. A human pulls the cord (UNSAFE). Coverage rises from those labels without auto-clearing a person close to a moving vehicle.
 
 **Stack:** Cursor skills; VAST S3 / DataEngine / VastDB; NVIDIA Cosmos Reason (captions), Cosmos Embed1 (search index), YOLO11 (person/vehicle corroboration); optional Weights & Biases serverless inference (prior); numpy logistic regression in `tools/scribner`. Bound to https://github.com/vast-data/vast-builders-challenge only. Corpus: Pack C `sdg_warehouse_cam-2`.
 **Code:** NOT PROVIDED — mirror this repo to a public URL judges can open.

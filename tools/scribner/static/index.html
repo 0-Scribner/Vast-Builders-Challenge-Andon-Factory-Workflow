@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Scribner — Pack C aisle gate</title>
+  <title>Scribner — 安灯 ANDON · Pack C</title>
   <style>
     :root {
-      --bg: #0c1014;
-      --panel: #141b22;
-      --panel-2: #1b242e;
+      --bg: #07090c;
+      --panel: #12181f;
+      --panel-2: #1a222c;
       --line: #2c3a4a;
       --text: #e6edf3;
       --muted: #7d93a8;
       --pass: #3dd68c;
-      --fail: #ff6b6b;
+      --fail: #ff4d4d;
       --hold: #f5c518;
       --accent: #4da3ff;
       --redline: #8b1e24;
@@ -23,10 +23,11 @@
       font: 14px/1.45 "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; }
     header {
       display: flex; align-items: center; gap: 16px;
-      padding: 12px 20px; border-bottom: 1px solid var(--line);
-      background: #0e141a;
+      padding: 10px 20px; border-bottom: 1px solid var(--line);
+      background: #0a0e12;
     }
     header h1 { font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase; margin: 0; }
+    header .ja { color: var(--hold); letter-spacing: 0.2em; font-size: 12px; }
     header .sub { color: var(--muted); font-size: 12px; }
     header .sp { flex: 1; }
     button, select {
@@ -36,24 +37,63 @@
     button.primary { background: var(--accent); color: #041018; border-color: transparent; font-weight: 600; }
     button.pass { background: #163526; color: var(--pass); border-color: #1f5a3c; }
     button.fail { background: #3a1518; color: var(--fail); border-color: #6b2428; }
-    .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; padding: 12px 20px; }
-    .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
-    .kpi b { display: block; font-size: 20px; }
-    .kpi span { color: var(--muted); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .andon {
+      margin: 10px 20px 0; padding: 12px 14px;
+      background: #0d1116; border: 1px solid #3a2a12; border-radius: 10px;
+      display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center;
+    }
+    .andon .brand { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--hold); }
+    .andon .brand b { display: block; font-size: 22px; letter-spacing: 0.28em; color: #f3e6c0; font-weight: 600; }
+    .lamps { display: flex; gap: 18px; justify-content: center; }
+    .lamp { text-align: center; min-width: 88px; }
+    .lamp .bulb {
+      width: 42px; height: 42px; border-radius: 50%; margin: 0 auto 6px;
+      border: 2px solid #222; background: #151515; box-shadow: inset 0 0 12px #000;
+    }
+    .lamp.on.green .bulb { background: #1dff7a; box-shadow: 0 0 18px #1dff7a, inset 0 0 8px #fff; border-color: #8dffc2; }
+    .lamp.on.yellow .bulb { background: #ffd000; box-shadow: 0 0 18px #ffd000, inset 0 0 8px #fff; border-color: #ffe680; }
+    .lamp.on.red .bulb { background: #ff2a2a; box-shadow: 0 0 22px #ff2a2a, inset 0 0 8px #fff; border-color: #ff8a8a; animation: pulse 1.1s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: 0.55; } }
+    .lamp .ja { font-size: 13px; font-weight: 700; }
+    .lamp .en { font-size: 10px; color: var(--muted); letter-spacing: 0.06em; }
+    .andon-meta { font-size: 12px; color: var(--muted); text-align: right; }
+    .andon-meta strong { color: var(--text); }
+    .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; padding: 10px 20px; }
+    .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+    .kpi b { display: block; font-size: 18px; }
+    .kpi span { color: var(--muted); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
     .layout { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 12px; padding: 0 20px 12px; min-height: 0; }
     .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
     .card h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-    video { width: 100%; background: #000; border-radius: 8px; max-height: 180px; }
+    .gemba {
+      display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: stretch;
+    }
+    .tower {
+      background: #0a0c0e; border: 1px solid #3a2a12; border-radius: 28px;
+      padding: 10px 8px; display: flex; flex-direction: column; gap: 10px;
+      justify-content: space-between;
+    }
+    .tower .lamp { min-width: 0; }
+    .tower .lamp .bulb { width: 34px; height: 34px; }
+    .gemba-frame { border: 3px solid var(--line); border-radius: 10px; overflow: hidden; background: #000; }
+    .gemba-frame.green { border-color: #1dff7a; box-shadow: 0 0 16px #1dff7a44; }
+    .gemba-frame.yellow { border-color: #ffd000; box-shadow: 0 0 16px #ffd00044; }
+    .gemba-frame.red { border-color: #ff2a2a; box-shadow: 0 0 18px #ff2a2a55; }
+    video { width: 100%; background: #000; display: block; max-height: 180px; }
+    .gemba-tag {
+      font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--hold); padding: 4px 8px; background: #0a0c0e;
+    }
     .meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
     .chip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-    .chip.HOLD, .chip.hold { background: #3d3410; color: var(--hold); }
-    .chip.AUTO_CLEAR, .chip.AUTO_PASS, .chip.CLEAR { background: #143325; color: var(--pass); }
-    .chip.AUTO_ALERT, .chip.AUTO_FAIL, .chip.UNSAFE { background: #3a1518; color: var(--fail); }
+    .chip.HOLD, .chip.hold, .chip.yellow { background: #3d3410; color: var(--hold); }
+    .chip.AUTO_CLEAR, .chip.AUTO_PASS, .chip.CLEAR, .chip.green { background: #143325; color: var(--pass); }
+    .chip.AUTO_ALERT, .chip.AUTO_FAIL, .chip.UNSAFE, .chip.red { background: #3a1518; color: var(--fail); }
     .redline {
       background: #2a1214; border: 1px solid var(--redline); color: #f0b8b8;
       border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 10px;
     }
-    .caption { font-size: 13px; color: #c9d6e4; background: var(--panel-2); padding: 10px; border-radius: 8px; max-height: 72px; overflow: auto; }
+    .caption { font-size: 13px; color: #c9d6e4; background: var(--panel-2); padding: 10px; border-radius: 8px; max-height: 64px; overflow: auto; }
     .actions { display: flex; gap: 8px; margin: 10px 0 8px; flex-wrap: wrap; align-items: center; }
     .hint { color: var(--muted); font-size: 12px; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -61,6 +101,10 @@
     tr:hover { background: var(--panel-2); cursor: pointer; }
     .queue-item { padding: 8px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; }
     .queue-item.active { border-color: var(--accent); }
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; background: #444; vertical-align: middle; }
+    .dot.green { background: #1dff7a; box-shadow: 0 0 8px #1dff7a; }
+    .dot.yellow { background: #ffd000; box-shadow: 0 0 8px #ffd000; }
+    .dot.red { background: #ff2a2a; box-shadow: 0 0 8px #ff2a2a; }
     pre { white-space: pre-wrap; font-size: 12px; color: #c9d6e4; }
     .tabs { display: flex; gap: 6px; padding: 0 20px 8px; }
     .tabs button.active { background: var(--accent); color: #041018; }
@@ -78,37 +122,58 @@
 <body>
   <header>
     <div>
-      <h1>Scribner</h1>
-      <div class="sub">Pack C aisle gate · person close to a moving vehicle</div>
+      <h1>Scribner <span class="ja">安灯</span></h1>
+      <div class="sub">ANDON · Pack C 倉庫通路 · person close to a moving vehicle</div>
     </div>
     <div class="sp"></div>
     <span id="modeChip" class="chip HOLD">…</span>
     <button onclick="scan()">Scan / reload</button>
     <button class="primary" onclick="retrain()">Retrain</button>
   </header>
+  <div class="andon" id="andon">
+    <div class="brand">安灯 ANDON · ライン<b>現場 GEMBA</b></div>
+    <div class="lamps">
+      <div class="lamp green" id="lampGreen"><div class="bulb"></div><div class="ja">正常</div><div class="en">CLEAR · run</div></div>
+      <div class="lamp yellow" id="lampYellow"><div class="bulb"></div><div class="ja">呼び出し</div><div class="en">HOLD · call</div></div>
+      <div class="lamp red" id="lampRed"><div class="bulb"></div><div class="ja">停止</div><div class="en">ALERT · stop</div></div>
+    </div>
+    <div class="andon-meta" id="andonMeta">line …</div>
+  </div>
   <div class="kpis" id="kpis"></div>
   <div class="tabs">
-    <button class="active" data-tab="review" onclick="tab('review')">Queue</button>
+    <button class="active" data-tab="review" onclick="tab('review')">現場 Queue</button>
     <button data-tab="units" onclick="tab('units')">All units</button>
     <button data-tab="report" onclick="tab('report')">Shift report</button>
   </div>
   <div id="reviewView" class="layout">
     <div class="card">
-      <div class="redline">False CLEAR is the red line. Never auto-clear what you cannot see.</div>
-      <h2>Current unit <span id="unitTitle"></span></h2>
-      <video id="player" controls autoplay muted loop playsinline></video>
+      <div class="redline">赤灯は人なしで緑にしない · False CLEAR is the red line. Never auto-clear what you cannot see.</div>
+      <h2>現場 clip <span id="unitTitle"></span></h2>
+      <div class="gemba">
+        <div class="tower" id="stationTower" title="工程 station andon">
+          <div class="lamp red" id="stRed"><div class="bulb"></div><div class="ja">停止</div></div>
+          <div class="lamp yellow" id="stYellow"><div class="bulb"></div><div class="ja">呼び出し</div></div>
+          <div class="lamp green" id="stGreen"><div class="bulb"></div><div class="ja">正常</div></div>
+        </div>
+        <div>
+          <div class="gemba-frame yellow" id="gembaFrame">
+            <div class="gemba-tag" id="gembaTag">現場 · sdg_warehouse_cam-2</div>
+            <video id="player" controls autoplay muted loop playsinline></video>
+          </div>
+        </div>
+      </div>
       <div class="schema" id="schema"></div>
       <div class="actions">
-        <button class="pass" onclick="review('CLEAR')">CLEAR  (A / C)</button>
-        <button class="fail" onclick="review('UNSAFE')">UNSAFE  (O / U)</button>
+        <button class="pass" onclick="review('CLEAR')">正常 CLEAR  (A / C)</button>
+        <button class="fail" onclick="review('UNSAFE')">異常 安灯 UNSAFE  (O / U)</button>
         <select id="reason"></select>
-        <span class="hint">A accept · O object · N next. Override AUTO_ALERT→CLEAR needs confirm.</span>
+        <span class="hint">O pulls the andon cord. AUTO_ALERT→CLEAR needs confirm.</span>
       </div>
       <div class="meta" id="unitMeta"></div>
       <p class="caption" id="caption"></p>
     </div>
     <div class="card">
-      <h2>HOLD / audit queue</h2>
+      <h2>呼び出し / audit</h2>
       <div id="queue"></div>
     </div>
   </div>
@@ -118,13 +183,21 @@
   <div id="reportView" class="hidden"><div class="card"><pre id="reportMd"></pre></div></div>
   <footer class="stack">
     <span id="payoffFoot">person close to a moving vehicle</span>
-    <span id="stackFoot">VAST · NVIDIA Cosmos · CoreWeave / W&amp;B · Cursor</span>
+    <span id="stackFoot">VAST · NVIDIA Cosmos · CoreWeave / W&amp;B · Cursor · 自働化 / ポカヨケ</span>
   </footer>
 <script>
 const $ = (id) => document.getElementById(id);
 let queue = [];
 let current = null;
 let reasons = [];
+let andon = null;
+
+function lampOf(d) {
+  d = (d || '').toUpperCase();
+  if (d === 'AUTO_ALERT' || d === 'AUTO_FAIL' || d === 'UNSAFE') return 'red';
+  if (d === 'AUTO_CLEAR' || d === 'AUTO_PASS' || d === 'CLEAR') return 'green';
+  return 'yellow';
+}
 
 function tab(name) {
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
@@ -140,18 +213,23 @@ async function boot() {
   reasons = kits.reasons || [];
   $('reason').innerHTML = reasons.map(r => `<option value="${r.id}">${r.label}</option>`).join('');
   if (kits.payoff_query) $('payoffFoot').textContent = kits.payoff_query;
-  if (kits.stack_line) $('stackFoot').textContent = kits.stack_line;
+  if (kits.stack_line) $('stackFoot').textContent = kits.stack_line + ' · 自働化 / ポカヨケ';
   await refresh();
 }
 
 async function refresh() {
-  const [m, q, h] = await Promise.all([
+  const uid = current && current.id;
+  const andonUrl = uid ? '/api/andon?unit_id=' + encodeURIComponent(uid) : '/api/andon';
+  const [m, q, h, a] = await Promise.all([
     fetch('/api/metrics').then(r => r.json()),
     fetch('/api/queue').then(r => r.json()),
     fetch('/health').then(r => r.json()),
+    fetch(andonUrl).then(r => r.json()),
   ]);
   $('modeChip').textContent = h.mock ? 'MOCK' : 'LIVE';
-  renderKpis(m.current || {});
+  andon = a;
+  renderAndon(a);
+  renderKpis(m.current || {}, a);
   queue = q.queue || [];
   renderQueue();
   if (!current && queue.length) select(queue[0].id);
@@ -162,12 +240,35 @@ async function refresh() {
   }
 }
 
-function renderKpis(c) {
+function setLampRow(ids, which) {
+  ids.forEach(([id, color]) => {
+    $(id).classList.toggle('on', which === color);
+  });
+}
+
+function renderAndon(a) {
+  if (!a) return;
+  setLampRow([['lampGreen','green'],['lampYellow','yellow'],['lampRed','red']], a.line_lamp);
+  setLampRow([['stGreen','green'],['stYellow','yellow'],['stRed','red']], a.station_lamp);
+  const frame = $('gembaFrame');
+  frame.classList.remove('green','yellow','red');
+  frame.classList.add(a.station_lamp || 'yellow');
+  $('gembaTag').textContent = `現場 ${a.station_ja || ''} · ${a.camera_id || 'sdg_warehouse_cam-2'} · 工程 ${a.station_ja_lamp || ''}`;
+  const c = a.counts || {};
+  $('andonMeta').innerHTML = [
+    `<div><strong>LINE ${a.line_ja}</strong> · ${a.line_en}</div>`,
+    `<div>${a.gemba} ${a.camera_id} / ${a.location}</div>`,
+    `<div>緑 ${c.green||0} · 黄 ${c.yellow||0} · 赤 ${c.red||0} · open ${a.open_holds||0}黄/${a.open_stops||0}赤</div>`,
+    `<div>${a.rule}</div>`,
+  ].join('');
+}
+
+function renderKpis(c, a) {
   const cells = [
     ['Coverage', pct(c.coverage)],
-    ['HOLD rate', pct(c.hold_rate)],
-    ['Auto clear', pct(c.auto_clear_rate ?? c.auto_pass_rate)],
-    ['Auto alert', pct(c.auto_alert_rate ?? c.auto_fail_rate)],
+    ['呼び出し HOLD', pct(c.hold_rate)],
+    ['緑 AUTO_CLEAR', pct(c.auto_clear_rate ?? c.auto_pass_rate)],
+    ['赤 AUTO_ALERT', pct(c.auto_alert_rate ?? c.auto_fail_rate)],
     ['Labels', String(c.n_labels ?? 0)],
     ['HOLD band', `${(c.t_pass??0).toFixed(2)}–${(c.t_fail??0).toFixed(2)}`],
   ];
@@ -182,16 +283,21 @@ function renderQueue() {
     const insp = u.inspection || {};
     const hz = (insp.hazards || insp.missing || []).join(', ') || '—';
     const active = current && current.id === u.id ? 'active' : '';
+    const lamp = lampOf(d);
     return `<div class="queue-item ${active}" onclick="select('${u.id}')">
+      <span class="dot ${lamp}"></span>
       <strong>${u.id}</strong> · ${u.kit_id || ''}
       <span class="chip ${d}">${d}</span>
       <div class="hint">p_fail=${p} · ${hz}</div>
     </div>`;
-  }).join('') || '<p class="hint">Queue empty. Scan, or every HOLD has been labeled.</p>';
+  }).join('') || '<p class="hint">Queue empty. 正常 — line is green, or every HOLD is labeled.</p>';
 }
 
 async function select(id) {
   current = await (await fetch('/api/units/' + id)).json();
+  const a = await (await fetch('/api/andon?unit_id=' + encodeURIComponent(id))).json();
+  andon = a;
+  renderAndon(a);
   renderQueue();
   renderUnit(current);
 }
@@ -245,7 +351,7 @@ async function review(verdict) {
   const auto = (current.decision_row || {}).decision || 'HOLD';
   let confirm_escape = false;
   if ((auto === 'AUTO_ALERT' || auto === 'AUTO_FAIL') && verdict === 'CLEAR') {
-    if (!window.confirm('Gate called UNSAFE. Confirm override to CLEAR? False CLEAR is the red line.')) return;
+    if (!window.confirm('赤灯を緑にする。False CLEAR is the red line. Confirm AUTO_ALERT → CLEAR?')) return;
     confirm_escape = true;
   }
   let reason = $('reason').value;
@@ -280,12 +386,14 @@ async function scan() {
 async function loadUnits() {
   const data = await (await fetch('/api/units')).json();
   const rows = data.units || [];
-  $('unitTable').innerHTML = `<tr><th>id</th><th>scene</th><th>variant</th><th>gate</th><th>p_fail</th><th>label</th><th>hazard</th></tr>` +
+  $('unitTable').innerHTML = `<tr><th></th><th>id</th><th>scene</th><th>variant</th><th>gate</th><th>p_fail</th><th>label</th><th>hazard</th></tr>` +
     rows.map(u => {
       const d = u.decision || {};
       const lab = u.label || {};
       const hz = (u.inspection && (u.inspection.hazards || u.inspection.missing) || []).join(', ');
+      const lamp = lampOf(d.decision);
       return `<tr onclick="tab('review'); select('${u.id}')">
+        <td><span class="dot ${lamp}"></span></td>
         <td>${u.id}</td><td>${u.kit_id||''}</td><td>${u.variant||''}</td>
         <td><span class="chip ${d.decision||''}">${d.decision||''}</span></td>
         <td>${d.p_fail ?? ''}</td>

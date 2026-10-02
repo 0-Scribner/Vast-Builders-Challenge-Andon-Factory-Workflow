@@ -28,6 +28,7 @@ def log_retrain(row: Dict[str, Any], scorer: Dict[str, Any], labels: List[Dict[s
         wandb.log({k: v for k, v in row.items() if isinstance(v, (int, float))})
         wandb.summary["n_labels"] = len(labels)
         wandb.summary["scorer_n"] = scorer.get("n")
+        wandb.summary["andon_line"] = row.get("andon_line") or ""
         run.finish()
     except Exception:
         return
