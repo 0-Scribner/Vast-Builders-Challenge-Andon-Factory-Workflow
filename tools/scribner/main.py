@@ -277,15 +277,30 @@ def api_report() -> PlainTextResponse:
 @app.get("/clip")
 def clip(source: str = Query(""), unit_id: str = Query("")) -> Response:
     """Pack C segment. Mock paints an andon-tinted warehouse aisle for this unit."""
+    source = clip_source(source, unit_id)
     if state.mock or not config.VSS_URL:
         path = _ensure_mock_clip(unit_id)
         return FileResponse(path, media_type="video/mp4")
+    if not source:
+        raise HTTPException(404, "no VSS source for this unit")
     try:
         client = VssClient()
         data = client.stream_bytes(source)
         return Response(content=data, media_type="video/mp4")
     except (VssError, Exception) as exc:
         raise HTTPException(502, f"stream failed: {type(exc).__name__}") from exc
+
+
+def clip_source(source: str = "", unit_id: str = "") -> str:
+    """Live /clip must stream the unit's Pack C segment, not an empty source."""
+    if source:
+        return source
+    if not unit_id:
+        return ""
+    u = state.unit(unit_id)
+    if not u:
+        return ""
+    return str(u.get("source") or u.get("original_video") or "")
 
 
 def _ensure_mock_clip(unit_id: str = "") -> Path:

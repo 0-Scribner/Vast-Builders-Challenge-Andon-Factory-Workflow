@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import config
 from inspection import parse_caption
-from kits import CAMERA_TO_KIT, is_corpus_kit, kit_for_camera, kit_ids
+from kits import CAMERA_TO_KIT, kit_for_camera, kit_ids
 from llm import prior_for
 from mock_data import build_mock_units
 from vss_client import VssClient
@@ -121,10 +121,14 @@ def _unit_from_parent(client: VssClient, parent: Dict[str, Any], i: int) -> Dict
 
 
 def _occlusion(kit_id: str, classes: str) -> bool:
-    """Person/forklift are the subject of Pack C, not occlusion."""
-    if is_corpus_kit(kit_id):
-        return "hand" in classes
-    return "hand" in classes
+    """Person/forklift/hand are Pack C subjects, not a blocked view.
+
+    AGENTS.md: do not HOLD every person as occlusion. A YOLO ``hand`` class
+    was a LEGO leftover; it must not trip view_blocked on warehouse clips.
+    View-blocked comes from the caption (UNCLEAR / LOW) or unit flags.
+    """
+    del kit_id, classes
+    return False
 
 
 def _yolo_flags(classes: str) -> Tuple[bool, bool]:

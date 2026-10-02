@@ -38,9 +38,11 @@ VSS routes you MAY call: `/api/v1/auth/login`, `/api/v1/auth/me`, `/api/v1/confi
 - [ ] `curl -sS http://127.0.0.1:8080/api/andon` has `"board":"andon"`, `"name_ja":"安灯"`, `"gemba":"現場"`, `"camera_id":"sdg_warehouse_cam-2"`, lamps green/yellow/red, rule `赤灯は人なしで緑にしない`.
 - [ ] `curl -sS http://127.0.0.1:8080/` greps `安灯`, `ANDON`, `呼び出し`, `停止`, `/api/andon`, `person close to a moving vehicle`, `VAST`, `NVIDIA Cosmos`.
 - [ ] `export BUILDERS_CHALLENGE_DIR=$HOME/vast-builders-challenge && ./scripts/run_adversarial.sh` all OK.
-- [ ] `SCRIBNER_MOCK=1 ./scripts/run_mock.sh` → `http://127.0.0.1:8080`. Station tower tracks the clip; `/clip?unit_id=` returns an mp4 >1k (ffmpeg warehouse stand-in).
+- [ ] `SCRIBNER_MOCK=1 ./scripts/run_mock.sh` → `http://127.0.0.1:8080`. Station tower tracks the clip; `/clip?unit_id=` returns an mp4 >1k (ffmpeg warehouse stand-in, 緑/黄/赤, **not a grey rectangle**).
+- [ ] **Footage:** if `INGRESS_URL`/`VSS_URL` + creds exist: login, explore Pack C `sdg_warehouse_cam-2`, search `person close to a moving vehicle`, stream a real segment through `/clip`, confirm the operator UI plays that clip with andon lamps. If those env names are unset: record `footage_live=skipped (no INGRESS_URL/VSS_URL)` and still prove mock clips + UI play. **Never claim live Pack C if you only ran mock.**
 - [ ] `curl -sS http://127.0.0.1:8080/health` contains `vast-builders-challenge`, `"canary_wired": false`, `"product":"warehouse-near-miss"`, `"line":"primary"`, `"corpus":"provided"`, `person close to a moving vehicle`, `"andon"`.
-- [ ] **Every logged-in tool was attempted** (Procedure step 7). GitHub push succeeded. W&B / VSS / GPU: `ok` or `skipped (<reason>)` — never silent skip.
+- [ ] `curl -sS http://127.0.0.1:8080/api/report` LINE Japanese matches `/api/andon` `line_ja`. AUTO_ALERT `/api/andon?unit_id=` → `station_lamp` red. Empty queue `line_lamp` green. HOLD+ALERT `line_lamp` red.
+- [ ] **Every logged-in tool was attempted** (Procedure step 7). Record each as `ok` | `fail` | `skipped (<reason>)`. Silent skip is a fail. GitHub push succeeded.
 - [ ] Public GitHub `HEAD` equals local `HEAD`. Origin pushed if that remote works. `./scripts/push_both.sh` after every commit.
 - [ ] `.cursor/adversarial/YYYYMMDD-cowork.md` Attack / Expected / Result: pass for Procedure step 8, including andon attacks.
 - Out of scope: filming, YouTube, docker, DataEngine rebuild, workshop re-ingest of Pack C, merging Plan B, deploying `/app` (event VM).
@@ -60,6 +62,9 @@ Scribner is jidoka on VAST Builders Challenge **provided Pack C** (`sdg_warehous
 - Do not skip GitHub push. Do not invent a GitHub URL you did not push.
 - Do not check out Plan B. Do not restore COMPLETE/INCOMPLETE as the operator control. Do not build a hard-hat detector. Do not reskin VSS Explore — this is andon + jidoka.
 - Do not skip a tool that is logged in. Missing W&B/VSS/GPU is `skipped (<reason>)`, not omitted.
+- Do not claim live Pack C / VSS stream if you only served mock ffmpeg clips. Write `footage_live=skipped (<reason>)`.
+- Do not open/update PRs with `origin pr create` / `gh pr create`. Cloud agents: ManagePullRequest `update_pr` on `cursor/warehouse-primary-72e3` base `main`. You (Cowork) push GitHub.com; this VM often cannot.
+- Pack C is **re-ingest**, not re-upload. Do not HOLD every YOLO person as occlusion. W&B prior must not undercut a fail-closed heuristic (NEAR_MISS stays p_fail ≥ 0.8).
 
 ## Inputs
 
@@ -261,16 +266,81 @@ if os.environ.get("CANARY_1B_URL"):
     print("canary_env_present_unused=yes")
 PY
 
-# --- ffmpeg warehouse stand-in (andon-tinted Pack C aisle) ---
+# --- ffmpeg warehouse stand-in (andon-tinted Pack C aisle, not grey) ---
 python3 - <<'PY'
+from pathlib import Path
 from andon import ensure_warehouse_clip
+import subprocess
 for lamp in ("green", "yellow", "red"):
+    Path(f"/tmp/scribner_andon_{lamp}.mp4").unlink(missing_ok=True)
     p = ensure_warehouse_clip(lamp)
     print(f"clip_{lamp}", p, p.stat().st_size if p.exists() else 0)
+    raw = subprocess.run(
+        ["ffmpeg","-v","error","-i",str(p),"-frames:v","1","-f","rawvideo","-pix_fmt","rgb24","pipe:1"],
+        check=True, capture_output=True,
+    ).stdout
+    n=max(len(raw)//3,1)
+    r=sum(raw[i] for i in range(0,len(raw),3))/n
+    g=sum(raw[i] for i in range(1,len(raw),3))/n
+    b=sum(raw[i] for i in range(2,len(raw),3))/n
+    spread=max(abs(r-g),abs(g-b),abs(r-b))
+    print(f"clip_{lamp}_rgb", round(r,1), round(g,1), round(b,1), "spread", round(spread,1))
+    assert p.stat().st_size > 1000
+    assert spread > 8, "grey rectangle"
 PY
 ```
 
 Do not dump login JSON. Do not curl Canary. 401 on VSS/GPU = `fail` + continue mock.
+
+7b. **Footage — live Pack C if VSS env names exist; else mock. Record which.**
+
+```sh
+# Names only. Never print values.
+env | cut -d= -f1 | sort | grep -E '^(INGRESS_URL|VSS_URL|USERNAME|PASSWORD|VSS_USERNAME|VSS_PASSWORD)$' || true
+```
+
+If `INGRESS_URL` or `VSS_URL` is set (and user/pass): after step 7 VSS login/explore/search, pick a Pack C `sdg_warehouse_cam-2` hit, set `SCRIBNER_MOCK=0`, start the app, `curl -sS -o /tmp/packc.mp4 -w '%{http_code} %{size_download}\n' "http://127.0.0.1:8080/clip?unit_id=$ID&source=$SOURCE"`, confirm size >1k and the UI `<video>` plays it with station lamps. Print `footage_live=ok camera=sdg_warehouse_cam-2`.
+
+If those env names are missing: print `footage_live=skipped (no INGRESS_URL/VSS_URL)` and continue mock. Pack C remaining work is **re-ingest on the workshop VM**, not re-upload.
+
+7c. **Mock server + HTTP poka-yoke (required even when live VSS is skipped).**
+
+```sh
+pkill -f 'tools/scribner/main.py' 2>/dev/null || true
+SCRIBNER_MOCK=1 SCRIBNER_DATA_DIR=/tmp/scribner-cowork ./scripts/run_mock.sh &
+sleep 2
+curl -sS http://127.0.0.1:8080/health | grep -E 'vast-builders-challenge|warehouse-near-miss|andon|"canary_wired": false'
+curl -sS http://127.0.0.1:8080/ | grep -E '安灯|ANDON|呼び出し|停止|/api/andon|person close to a moving vehicle|AUTO_CLEAR|UNSAFE'
+BOARD=$(curl -sS http://127.0.0.1:8080/api/andon)
+echo "$BOARD" | grep -E '"board": "andon"|sdg_warehouse_cam-2|赤灯は人なしで緑にしない'
+LINE_JA=$(echo "$BOARD" | python3 -c "import sys,json; print(json.load(sys.stdin)['line_ja'])")
+curl -sS http://127.0.0.1:8080/api/report | grep -F "$LINE_JA"
+ALERT=$(curl -sS http://127.0.0.1:8080/api/units | python3 -c "import sys,json; rows=json.load(sys.stdin)['units']; print(next(u['id'] for u in rows if (u.get('decision') or {}).get('decision')=='AUTO_ALERT'))")
+HOLD=$(curl -sS http://127.0.0.1:8080/api/queue | python3 -c "import sys,json; q=json.load(sys.stdin)['queue']; print(next(u['id'] for u in q if (u.get('decision_row') or {}).get('decision')=='HOLD'))")
+curl -sS "http://127.0.0.1:8080/api/andon?unit_id=$ALERT" | grep '"station_lamp": "red"'
+curl -sS -o /tmp/andon-clip.mp4 -w '%{http_code} %{size_download}\n' "http://127.0.0.1:8080/clip?unit_id=$ALERT"
+test "$(stat -c%s /tmp/andon-clip.mp4)" -gt 1000
+# HTTP 400 poka-yoke
+test "$(curl -sS -o /tmp/h1 -w '%{http_code}' -X POST http://127.0.0.1:8080/api/review -H 'Content-Type: application/json' -d "{\"unit_id\":\"$HOLD\",\"verdict\":\"CLEAR\",\"reason\":\"agree\",\"gate_ok\":true}")" = 400
+test "$(curl -sS -o /tmp/h2 -w '%{http_code}' -X POST http://127.0.0.1:8080/api/review -H 'Content-Type: application/json' -d "{\"unit_id\":\"$ALERT\",\"verdict\":\"CLEAR\",\"reason\":\"vlm_false_alert\",\"confirm_escape\":false}")" = 400
+test "$(curl -sS -o /tmp/h3 -w '%{http_code}' -X POST http://127.0.0.1:8080/api/review -H 'Content-Type: application/json' -d "{\"unit_id\":\"$ALERT\",\"verdict\":\"CLEAR\",\"reason\":\"agree\"}")" = 400
+```
+
+7d. **Browser-verify the UI plays the clip with lamps** (computerUse if present; else xdotool + ffmpeg, `DISPLAY=:1` on Cloud VMs).
+
+```sh
+# Chrome on the mock operator UI. Screenshot under /opt/cursor/artifacts/ if that dir exists, else /tmp.
+ART="${ART:-/opt/cursor/artifacts}"
+mkdir -p "$ART"
+google-chrome --no-sandbox --disable-gpu --window-size=1400,900 "http://127.0.0.1:8080/" >/tmp/chrome-andon.log 2>&1 &
+sleep 3
+xdotool search --name 'Scribner' windowactivate || true
+ffmpeg -y -f x11grab -video_size 1400x900 -i "${DISPLAY:-:1}.0+0,0" -frames:v 1 "$ART/andon_operator_ui.png"
+# Play: click 現場 queue item if needed. Confirm video is not a grey rectangle.
+ls -l "$ART/andon_operator_ui.png"
+```
+
+Record `browser_ui=ok` or `browser_ui=skipped (<no DISPLAY/xdotool>)`. Walkthrough artifacts go under `/opt/cursor/artifacts/` when that path exists.
 
 8. **Adversarial every change** before commit. Write `.cursor/adversarial/YYYYMMDD-cowork.md`. Run `./scripts/run_adversarial.sh`. Also attack:
 
@@ -285,11 +355,16 @@ Do not dump login JSON. Do not curl Canary. 401 on VSS/GPU = `fail` + continue m
 - `push_both` with staged mp4 → refuse
 - source contains `/api/v1/reports` or `166.19.38.112` or Canary transcriptions → fail
 - `/health` missing `vast-builders-challenge` or `warehouse-near-miss` or `andon` → fail
-- UI missing 安灯 / ANDON / 呼び出し / payoff query / AUTO_CLEAR / UNSAFE / `/api/andon` → fail
+- UI missing 安灯 / ANDON / 呼び出し / 停止 / payoff query / AUTO_CLEAR / UNSAFE / `/api/andon` → fail
 - `/api/andon` missing `board=andon` or `camera_id=sdg_warehouse_cam-2` or `rule` 赤灯 → fail
 - AUTO_ALERT unit via `/api/andon?unit_id=` → `station_lamp` not red → fail
 - empty review queue → `line_lamp` not green → fail
 - line with HOLD + AUTO_ALERT → `line_lamp` not red → fail
+- `/api/report` LINE Japanese ≠ `/api/andon` `line_ja` → fail
+- mock `/clip?unit_id=` AUTO_ALERT mp4 ≤1k or RGB spread ≤8 (grey rectangle) → fail
+- YOLO `hand`/`person` treated as Pack C occlusion → fail
+- W&B prior PASS on NEAR_MISS with p_fail < 0.8 → fail
+- live `/clip` empty `source` query does not fall back to unit.source → fail
 
 If an attack succeeds, fix before any other feature.
 
@@ -350,17 +425,19 @@ PY
 SCRIBNER_MOCK=1 ./scripts/run_mock.sh & sleep 2
 curl -sS http://127.0.0.1:8080/health | grep -E "vast-builders-challenge|warehouse-near-miss|andon|安灯"
 curl -sS http://127.0.0.1:8080/api/andon | grep -E '"board": "andon"|sdg_warehouse_cam-2|赤灯は人なしで緑にしない'
-curl -sS http://127.0.0.1:8080/ | grep -E "安灯|ANDON|呼び出し|停止|/api/andon|person close to a moving vehicle"
+curl -sS http://127.0.0.1:8080/ | grep -E "安灯|ANDON|呼び出し|停止|/api/andon|person close to a moving vehicle|AUTO_CLEAR|UNSAFE"
 ALERT=$(curl -sS http://127.0.0.1:8080/api/units | python3 -c "import sys,json; rows=json.load(sys.stdin)['units']; print(next(u['id'] for u in rows if (u.get('decision') or {}).get('decision')=='AUTO_ALERT'))")
 curl -sS "http://127.0.0.1:8080/api/andon?unit_id=$ALERT" | grep '"station_lamp": "red"'
 curl -sS -o /tmp/andon-clip.mp4 -w '%{http_code} %{size_download}\n' "http://127.0.0.1:8080/clip?unit_id=$ALERT"
 test "$(stat -c%s /tmp/andon-clip.mp4)" -gt 1000
-git ls-remote github HEAD
+LINE_JA=$(curl -sS http://127.0.0.1:8080/api/andon | python3 -c "import sys,json; print(json.load(sys.stdin)['line_ja'])")
+curl -sS http://127.0.0.1:8080/api/report | grep -F "$LINE_JA"
+git ls-remote github HEAD || echo "github_remote=skipped"
 git rev-parse HEAD
-ls .cursor/adversarial/*cowork.md
+ls .cursor/adversarial/*.md
 ```
 
-Pass: adversarial green; A/O andon UI; `/health` pins official repo + warehouse-near-miss + andon; `/api/andon` is Pack C 現場; GitHub HEAD = local; every tool in the table was attempted; Origin pushed or skipped with reason. Fail: fix or blocked.
+Pass: adversarial green; A/O andon UI; `/health` pins official repo + warehouse-near-miss + andon; `/api/andon` is Pack C 現場; report LINE matches; clip is tinted aisle not grey; GitHub HEAD = local (Cowork); every tool in the table was attempted as ok|fail|skipped(<reason>); Origin pushed or skipped with reason. Fail: fix or blocked. Never write `footage_live=ok` unless you streamed VSS Pack C.
 
 ## Report back
 
@@ -368,18 +445,22 @@ Pass: adversarial green; A/O andon UI; `/health` pins official repo + warehouse-
 handoff: chatgpt-cowork
 status: done | blocked | partial
 machine: bryce-laptop
-logins:
+logins / tools (ok | fail | skipped(<reason>); silent skip = fail):
 - github:
 - origin_cli:
 - wandb_cli:
 - wandb_inference:
 - vss_login:
 - vss_me:
+- vss_ingest_config:
+- vss_explore:
 - vss_search:
 - cosmos3_reason:
 - yolo:
 - embed1:
 - ffmpeg:
+- unittest:
+- run_adversarial.sh:
 - canary_called: no
 checks:
 - tests:
@@ -389,12 +470,17 @@ checks:
 - operator_ui_AO_andon:
 - api_andon_pack_c:
 - station_lamp_red_on_alert:
+- report_line_matches_andon:
+- clip_mp4_not_grey:
 - health_stack_pin:
 - github_push:
 - origin_push: pass | fail | skipped
+- footage_live: ok | skipped (no INGRESS_URL/VSS_URL) | fail
+- browser_ui:
 - footage_only_remaining: re-ingest Pack C on workshop VM
 artifacts:
 - github: https://github.com/<login>/Scribner
+- origin_pr: https://cursor.com/codebase/bryce-mcg/Scribner/pull/2
 - mock: http://127.0.0.1:8080
 next: Bryce re-ingests Pack C on the workshop VM; operator uses 安灯 A/O UI
 ```

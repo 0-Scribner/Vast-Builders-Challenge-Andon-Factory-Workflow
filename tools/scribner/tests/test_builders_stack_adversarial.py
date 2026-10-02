@@ -34,6 +34,8 @@ from gate import decide_one, pass_blocked  # noqa: E402
 from ingest import IngestRejected, assert_uploadable, filter_upload_fields  # noqa: E402
 from inspection import parse_caption  # noqa: E402
 from kits import kit_ids, prompt_for_kit  # noqa: E402
+from llm import merge_wandb_prior  # noqa: E402
+from scan import _occlusion  # noqa: E402
 from state import AppState  # noqa: E402
 from store import Store  # noqa: E402
 
@@ -312,6 +314,45 @@ class GateFailClosedTests(unittest.TestCase):
         )
         self.assertNotEqual(d["decision"], "AUTO_CLEAR")
         self.assertTrue(pass_blocked(_unit(inspection=rec, yolo_person=True, yolo_vehicle=True)))
+
+
+class WandbPriorAndOcclusionTests(unittest.TestCase):
+    def test_wandb_pass_cannot_undercut_near_miss(self) -> None:
+        rec = parse_caption(
+            "PERSON: YES. VEHICLE: forklift. MOTION: MOVING. DISTANCE: CLOSE. "
+            "PATH_CLEAR: NO. NEAR_MISS: YES. HAZARD: forklift-near-person. "
+            "UNCLEAR: NONE. CONFIDENCE: HIGH.",
+            kit_id="warehouse-aisle",
+        )
+        heuristic = {"p_fail_prior": 0.88, "proposed": "FAIL"}
+        wandb = {"p_fail_prior": 0.05, "proposed": "PASS", "source": "wandb"}
+        out = merge_wandb_prior(heuristic, wandb, rec)
+        self.assertGreaterEqual(out["p_fail_prior"], 0.8)
+        self.assertEqual(out["proposed"], "FAIL")
+
+    def test_wandb_pass_cannot_undercut_low_confidence(self) -> None:
+        rec = {
+            "complete": True,
+            "confidence": "low",
+            "unclear": ["DISTANCE"],
+            "near_miss": False,
+            "path_clear": True,
+            "hazards": [],
+            "missing": [],
+            "inconsistent": False,
+        }
+        out = merge_wandb_prior(
+            {"p_fail_prior": 0.5, "proposed": "HOLD"},
+            {"p_fail_prior": 0.04, "proposed": "PASS", "source": "wandb"},
+            rec,
+        )
+        self.assertGreaterEqual(out["p_fail_prior"], 0.45)
+        self.assertNotEqual(out["proposed"], "PASS")
+
+    def test_pack_c_person_forklift_hand_is_not_occlusion(self) -> None:
+        self.assertFalse(_occlusion("warehouse-aisle", "person,forklift,hand"))
+        self.assertFalse(_occlusion("warehouse-aisle", "person"))
+        self.assertFalse(_occlusion("person-near-vehicle", "hand"))
 
 
 class IngestPokaYokeTests(unittest.TestCase):

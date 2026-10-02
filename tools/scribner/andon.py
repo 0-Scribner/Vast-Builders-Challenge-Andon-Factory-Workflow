@@ -161,6 +161,9 @@ def ensure_warehouse_clip(lamp: str) -> Path:
         f"drawbox=x=0:y=400:w=960:h=140:color={spec['floor']}:t=fill,"
         f"drawbox=x=150:y=20:w=32:h=380:color={spec['rack']}:t=fill,"
         f"drawbox=x=778:y=20:w=32:h=380:color={spec['rack']}:t=fill,"
+        f"drawbox=x=168:y=80:w=90:h=54:color=0xc4a35a:t=fill,"
+        f"drawbox=x=702:y=140:w=76:h=48:color=0xb08a48:t=fill,"
+        f"drawbox=x=474:y=400:w=12:h=140:color={spec['fg']}:t=fill,"
         f"drawbox=x=0:y=0:w=960:h=8:color={spec['fg']}:t=fill"
     )
     label = (
@@ -188,8 +191,21 @@ def ensure_warehouse_clip(lamp: str) -> Path:
         "-an", "-movflags", "+faststart", str(path),
     ]
     subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    if not path.exists() or path.stat().st_size < 100:
-        path.write_bytes(b"")
+    if path.exists() and path.stat().st_size > 1000:
+        return path
+    # Simpler tinted aisle — never an empty/grey rectangle.
+    subprocess.run(
+        [
+            "ffmpeg", "-y",
+            "-f", "lavfi", "-i", f"color=c={spec['bg']}:s=960x540:d=2:r=12",
+            "-vf", aisle,
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-t", "2",
+            "-an", str(path),
+        ],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
     return path
 
 

@@ -277,6 +277,35 @@ class AndonTests(unittest.TestCase):
         self.assertGreater(path.stat().st_size, 1000)
         self.assertTrue(path.name.endswith("red.mp4"))
 
+    def test_warehouse_clips_are_andon_tinted_not_grey(self) -> None:
+        import subprocess
+
+        for lamp in ("green", "yellow", "red"):
+            p = Path(f"/tmp/scribner_andon_{lamp}.mp4")
+            p.unlink(missing_ok=True)
+            path = ensure_warehouse_clip(lamp)
+            self.assertGreater(path.stat().st_size, 1000)
+            raw = subprocess.run(
+                [
+                    "ffmpeg", "-v", "error", "-i", str(path),
+                    "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1",
+                ],
+                check=True,
+                capture_output=True,
+            ).stdout
+            n = max(len(raw) // 3, 1)
+            r = sum(raw[i] for i in range(0, len(raw), 3)) / n
+            g = sum(raw[i] for i in range(1, len(raw), 3)) / n
+            b = sum(raw[i] for i in range(2, len(raw), 3)) / n
+            spread = max(abs(r - g), abs(g - b), abs(r - b))
+            self.assertGreater(spread, 8, msg=f"{lamp} looks grey r={r:.1f} g={g:.1f} b={b:.1f}")
+            if lamp == "green":
+                self.assertGreater(g, r)
+            elif lamp == "red":
+                self.assertGreater(r, g)
+            else:
+                self.assertGreater(r + g, 2 * b)
+
 
 if __name__ == "__main__":
     unittest.main()
