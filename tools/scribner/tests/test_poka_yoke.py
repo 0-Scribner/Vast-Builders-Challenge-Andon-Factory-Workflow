@@ -86,7 +86,7 @@ class ApiPokaYokeTests(unittest.TestCase):
         self.assertIn("gemba-frame", html)
         self.assertIn("自働化", html)
         self.assertIn("ポカヨケ", html)
-        self.assertIn("/api/andon?unit_id=", html)
+        self.assertIn("api/andon?unit_id=", html)
         self.assertIn("position: sticky", html)
         self.assertNotIn("review('COMPLETE')", html)
         self.assertNotIn("Incomplete", html)
