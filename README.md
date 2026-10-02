@@ -15,11 +15,29 @@ The same schema **is** the official Architecture Reference payoff query *person 
 ## Quick start (mock, no VSS)
 
 ```bash
-PYTHONPATH=tools/scribner python3 -m unittest discover -s tools/scribner/tests -v
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r tools/scribner/requirements.txt
+export BUILDERS_CHALLENGE_DIR="$HOME/vast-builders-challenge"
+./scripts/run_adversarial.sh
 export SCRIBNER_MOCK=1
 ./scripts/run_mock.sh
 # http://127.0.0.1:8080   keys: A/C 正常 CLEAR · O/U 異常 andon cord · N next
 ```
+
+The scripts use `.venv/bin/python` when present. If port 8080 is occupied,
+run `PORT=8081 ./scripts/run_mock.sh` and open `http://127.0.0.1:8081`.
+Mock clips are generated warehouse stand-ins; live Pack C playback requires VSS credentials.
+
+Origin is the source of truth: [bryce-mcg/Scribner](https://cursor.com/codebase/bryce-mcg/Scribner),
+branch `cursor/warehouse-primary-72e3`. The GitHub mirror is
+[0-Scribner/Vast-Builders-Challenge-Andon-Factory-Workflow](https://github.com/0-Scribner/Vast-Builders-Challenge-Andon-Factory-Workflow/tree/cursor/warehouse-primary-72e3).
+After each commit, run `./scripts/push_both.sh`; it pushes Origin first, then GitHub,
+and keeps Origin as the upstream.
+
+For the remaining live connections and event deployment, follow the
+[agent-first handoff for Josh's Cowork](.cursor/handoffs/josh-cowork.md).
+It includes the unverified services, live camera filtering checks, and the
+required `/app` URL fix before deployment.
 
 Oracle loop:
 

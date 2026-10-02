@@ -26,7 +26,12 @@ push_one() {
   local name="$1"
   git remote get-url "$name" >/dev/null 2>&1 || return 0
   echo "push_both: pushing $HEAD → $name $(git rev-parse --abbrev-ref HEAD)"
-  if git push -u "$name" HEAD; then
+  # Origin remains the upstream; pushing the GitHub mirror must not replace it.
+  local args=()
+  if [[ "$name" == "origin" ]]; then
+    args+=(--set-upstream)
+  fi
+  if git push "${args[@]}" "$name" HEAD; then
     pushed=$((pushed + 1))
   else
     echo "push_both: $name push failed" >&2

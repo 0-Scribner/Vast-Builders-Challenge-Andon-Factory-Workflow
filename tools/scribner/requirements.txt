@@ -4,3 +4,4 @@ requests>=2.31
 numpy>=1.26
 pydantic>=2.0
 openai>=1.30
+wandb>=0.17

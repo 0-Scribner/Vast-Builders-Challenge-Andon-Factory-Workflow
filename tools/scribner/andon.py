@@ -51,9 +51,10 @@ _YELLOW_DECISIONS = {"HOLD"}
 _GREEN_DECISIONS = {"AUTO_CLEAR", "AUTO_PASS", "CLEAR"}
 
 _FONT_CANDIDATES = (
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
     "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
     "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
 )
 
