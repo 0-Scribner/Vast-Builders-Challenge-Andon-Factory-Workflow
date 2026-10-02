@@ -1,0 +1,22 @@
+---
+description: Poka-yoke and adversarial review on every Scribner change. Always apply.
+alwaysApply: true
+---
+
+# Poka-yoke and adversarial review
+
+False PASS (incomplete kit marked complete / AUTO_PASS) is the red-line failure. Make the wrong action impossible; do not add a warning and continue.
+
+## Poka-yoke (must remain true)
+
+- No AUTO_PASS if caption inconsistent, MISSING nonempty, CONFIDENCE=LOW, UNCLEAR nonempty, or occlusion.
+- Operator cannot “Gate was right” on HOLD (API 400 + UI disabled).
+- Override requires a non-`agree` reason. AUTO_FAIL → COMPLETE needs a second confirm.
+- Ingest: filename regex + known `kit_id` only; custom_prompt ≤800; no YouTube/http file paths.
+- `scripts/push_both.sh` refuses clips/secrets and fails if origin or github push fails.
+
+## Adversarial review (every change)
+
+Before you commit: run attacks that should fail closed (false PASS, illegal operator POST, bad filename, 801-char prompt, YouTube path). Record them in `.cursor/adversarial/` with Attack / Expected / Result / Fix. If an attack succeeds, fix it before any other work. Happy-path tests alone are not enough.
+
+Do not ask Josh to invent these attacks; use the list in `.cursor/handoffs/chatgpt-cowork.md` and extend it when you add a surface.
