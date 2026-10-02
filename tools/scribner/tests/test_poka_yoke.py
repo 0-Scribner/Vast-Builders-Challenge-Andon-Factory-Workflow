@@ -20,6 +20,11 @@ from builders_stack import SOURCE_URL  # noqa: E402
 
 
 class ApiPokaYokeTests(unittest.TestCase):
+    def setUp(self) -> None:
+        if not main.state.store.load_units():
+            main.state.scan()
+            main.state.run_gate()
+
     def test_health_pins_builders_stack(self) -> None:
         body = main.health()
         self.assertTrue(body["ok"])
