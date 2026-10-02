@@ -77,7 +77,9 @@ SEARCH_QUERY = os.environ.get(
     "SCRIBNER_SEARCH_QUERY", "person close to a moving vehicle"
 ).strip()
 
-PKG_DIR = Path(__file__).resolve().parent
+# Not resolved: in the pod the code ConfigMap files are symlinks into a hidden
+# timestamped directory, while static/ is a separate mount beside them.
+PKG_DIR = Path(os.path.abspath(__file__)).parent
 STATIC_DIR = PKG_DIR / "static"
 
 

@@ -68,7 +68,8 @@ app = FastAPI(title="Scribner warehouse andon / near-miss gate", version="2.2.0"
 app.include_router(build_stack_router(state))
 
 STATIC = config.STATIC_DIR
-STATIC.mkdir(parents=True, exist_ok=True)
+if not STATIC.is_dir():
+    STATIC.mkdir(parents=True, exist_ok=True)
 
 
 class ReviewBody(BaseModel):
