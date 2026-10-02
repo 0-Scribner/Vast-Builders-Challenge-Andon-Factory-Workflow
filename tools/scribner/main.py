@@ -52,6 +52,7 @@ from kits import (
     prompt_for_kit,
 )
 from report import render_markdown
+from stack_tools import build_router as build_stack_router
 from state import AppState
 from vss_client import VssClient, VssError
 
@@ -67,6 +68,7 @@ async def _lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Scribner warehouse andon / near-miss gate", version="2.2.0", lifespan=_lifespan)
+app.include_router(build_stack_router(state))
 
 STATIC = config.STATIC_DIR
 STATIC.mkdir(parents=True, exist_ok=True)

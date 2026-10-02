@@ -178,6 +178,15 @@
       <h2>呼び出し / audit</h2>
       <div id="queue"></div>
     </div>
+    <div class="card">
+      <h2>VSS tools</h2>
+      <input id="stackQ" placeholder="Ask the VSS agent about this clip">
+      <button onclick="stackAsk()">Ask</button>
+      <button onclick="stack('dashboard')">Dashboard</button>
+      <button onclick="stack('suggest')">Suggest</button>
+      <button onclick="stack('metadata')">Metadata</button>
+      <pre id="stackOut"></pre>
+    </div>
   </div>
   <div id="unitsView" class="hidden" style="padding:0 20px 20px">
     <div class="card"><table id="unitTable"></table></div>
@@ -436,6 +445,21 @@ async function loadUnits() {
 
 async function loadReport() {
   $('reportMd').textContent = await (await appFetch('api/report')).text();
+}
+
+async function stack(path, body) {
+  const opts = body
+    ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+    : {};
+  const r = await fetch(appUrl('api/stack/' + path), opts);
+  let text = await r.text();
+  try { text = JSON.stringify(JSON.parse(text), null, 2); } catch (_) {}
+  $('stackOut').textContent = (r.ok ? '' : 'HTTP ' + r.status + ' ') + text;
+}
+function stackAsk() {
+  const q = $('stackQ').value.trim();
+  if (!q) return;
+  stack('ask', { question: q, unit_id: current ? current.id : null });
 }
 
 document.addEventListener('keydown', (e) => {

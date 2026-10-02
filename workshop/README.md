@@ -83,6 +83,14 @@ python workshop/08_finalize_submission.py --feedback 'YOUR EVENT FEEDBACK'
 
 It fills team identity from `$USERNAME`/`$PIPELINE` and derives the live `/app` URL from `$INGRESS_URL`. Review the final `SUBMISSION.md` and follow the organizers' actual submission workflow.
 
+## 9. VastDB read-only evidence
+
+```bash
+python workshop/09_vastdb_read.py
+```
+
+Read-only `vastdb` SDK check (`pip install vastdb pyarrow`; through the skill's SSH tunnel set `VDB_ENDPOINT=http://127.0.0.1:18080`). It counts exact `sdg_warehouse_cam-2` / `warehouse3` rows in `vss-collection` and their captions containing `PATH_CLEAR:`, `NEAR_MISS:`, `UNCLEAR:` and `CONFIDENCE:`, then writes `09_vastdb_read.json` to `$SCRIBNER_EVIDENCE_DIR`. Exit 0 is PASS, 1 is FAIL, 2 is UNKNOWN.
+
 ## Final adverse audit before push
 
 ```bash
